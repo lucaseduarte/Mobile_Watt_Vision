@@ -18,8 +18,12 @@ import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.Equipamento
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.EquipamentoDetalheViewModel
 import com.example.watt_vision_mobile.ui.screens.login.LoginScreen
 import com.example.watt_vision_mobile.ui.screens.login.LoginViewModel
+import com.example.watt_vision_mobile.ui.screens.operacional.LocalDetalheScreen
+import com.example.watt_vision_mobile.ui.screens.operacional.LocalItem
 import com.example.watt_vision_mobile.ui.screens.operacional.OperacionalScreen
 import com.example.watt_vision_mobile.ui.screens.operacional.OperacionalViewModel
+import com.example.watt_vision_mobile.ui.screens.operacional.SetorDetalheScreen
+import com.example.watt_vision_mobile.ui.screens.operacional.SetorItem
 import com.example.watt_vision_mobile.ui.screens.placeholder.PlaceholderScreen
 import com.example.watt_vision_mobile.ui.theme.WattVisionTheme
 
@@ -38,6 +42,8 @@ class MainActivity : ComponentActivity() {
                 var isLoggedIn by remember { mutableStateOf(true) }
                 var selectedRoute by remember { mutableStateOf("Dashboard") }
                 var selectedEquipamentoId by rememberSaveable { mutableStateOf<String?>(null) }
+                var selectedSetorItem by remember { mutableStateOf<SetorItem?>(null) }
+                var selectedLocalItem by remember { mutableStateOf<LocalItem?>(null) }
 
                 if (!isLoggedIn) {
                     LoginScreen(
@@ -56,7 +62,9 @@ class MainActivity : ComponentActivity() {
                                 selectedRoute = selectedRoute,
                                 onRouteSelected = { route ->
                                     selectedRoute = route
-                                    selectedEquipamentoId = null // Reseta navegação interna ao trocar de aba principal
+                                    selectedEquipamentoId = null
+                                    selectedSetorItem = null
+                                    selectedLocalItem = null
                                 }
                             )
                         }
@@ -71,21 +79,45 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             "Operacional" -> {
-                                if (selectedEquipamentoId != null) {
-                                    EquipamentoDetalheScreen(
-                                        viewModel = equipamentoDetalheViewModel,
-                                        onBackClick = { selectedEquipamentoId = null },
-                                        modifier = contentModifier
-                                    )
-                                } else {
-                                    OperacionalScreen(
-                                        viewModel = operacionalViewModel,
-                                        onEquipamentoClick = { id ->
-                                            equipamentoDetalheViewModel.setEquipamentoId(id)
-                                            selectedEquipamentoId = id
-                                        },
-                                        modifier = contentModifier
-                                    )
+                                when {
+                                    selectedEquipamentoId != null -> {
+                                        EquipamentoDetalheScreen(
+                                            viewModel = equipamentoDetalheViewModel,
+                                            onBackClick = { selectedEquipamentoId = null },
+                                            modifier = contentModifier
+                                        )
+                                    }
+                                    selectedSetorItem != null -> {
+                                        SetorDetalheScreen(
+                                            setor = selectedSetorItem!!,
+                                            onBackClick = { selectedSetorItem = null },
+                                            modifier = contentModifier
+                                        )
+                                    }
+                                    selectedLocalItem != null -> {
+                                        LocalDetalheScreen(
+                                            local = selectedLocalItem!!,
+                                            onBackClick = { selectedLocalItem = null },
+                                            modifier = contentModifier
+                                        )
+                                    }
+                                    else -> {
+                                        OperacionalScreen(
+                                            viewModel = operacionalViewModel,
+                                            onEquipamentoClick = { id ->
+                                                equipamentoDetalheViewModel.setEquipamentoId(id)
+                                                selectedEquipamentoId = id
+                                            },
+                                            onSetorClick = { setor ->
+                                                selectedSetorItem = setor
+                                            },
+                                            onLocalClick = { local ->
+                                                selectedLocalItem = local
+                                            },
+                                            onNavigate = { route -> selectedRoute = route },
+                                            modifier = contentModifier
+                                        )
+                                    }
                                 }
                             }
                             else -> {

@@ -2,12 +2,16 @@ package com.example.watt_vision_mobile.ui.screens.operacional
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +32,9 @@ import kotlinx.coroutines.launch
 fun OperacionalScreen(
     viewModel: OperacionalViewModel,
     onEquipamentoClick: (String) -> Unit = {},
+    onSetorClick: (SetorItem) -> Unit = {},
+    onLocalClick: (LocalItem) -> Unit = {},
+    onNavigate: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -43,30 +50,86 @@ fun OperacionalScreen(
         modifier = modifier.fillMaxSize(),
         containerColor = DarkBackground,
         topBar = {
-            // TopAppBar com título "Operacional" e subtítulo "Visão geral do sistema" (Respeitando a status bar)
+            // TopAppBar sem cor de fundo (DarkBackground), com título, subtítulo e botões de alarme e configuração no canto superior direito
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(InputBackground)
-                    .statusBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 14.dp)
+                    .background(DarkBackground)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                Column {
-                    Text(
-                        text = "Operacional",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextWhite,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "Visão geral do sistema",
-                        fontSize = 11.sp,
-                        color = TextMuted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
+                        Text(
+                            text = "Operacional",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextWhite,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "Visão geral do sistema",
+                            fontSize = 11.sp,
+                            color = TextMuted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clickable { onNavigate("Alarmes") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = SurfaceDark,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Notifications,
+                                        contentDescription = "Alarmes recentes",
+                                        tint = TextMuted,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clickable { onNavigate("Configurações") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = SurfaceDark,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Configurações do sistema",
+                                        tint = TextMuted,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -76,11 +139,11 @@ fun OperacionalScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // PrimaryTabRow (Equipamentos, Setores, Locais)
+            // PrimaryTabRow sem background sólido (containerColor = DarkBackground)
             val tabs = listOf("Equipamentos", "Setores", "Locais")
             PrimaryTabRow(
                 selectedTabIndex = pagerState.currentPage,
-                containerColor = InputBackground,
+                containerColor = DarkBackground,
                 contentColor = PrimaryBlue,
                 divider = { HorizontalDivider(color = CardBorder, thickness = 1.dp) }
             ) {
@@ -206,7 +269,10 @@ fun OperacionalScreen(
                                     modifier = Modifier.fillMaxSize()
                                 ) {
                                     items(filteredSts, key = { it.id }) { st ->
-                                        SetorCard(item = st) // onClick = null (somente visualização)
+                                        SetorCard(
+                                            item = st,
+                                            onClick = { onSetorClick(st) }
+                                        )
                                     }
                                 }
                             }
@@ -251,7 +317,10 @@ fun OperacionalScreen(
                                     modifier = Modifier.fillMaxSize()
                                 ) {
                                     items(filteredLcs, key = { it.id }) { lc ->
-                                        LocalCard(item = lc) // onClick = null (somente visualização)
+                                        LocalCard(
+                                            item = lc,
+                                            onClick = { onLocalClick(lc) }
+                                        )
                                     }
                                 }
                             }
@@ -318,7 +387,7 @@ fun BuscaSemResultadoState(onLimparFiltros: () -> Unit) {
 }
 
 // ==========================================
-// PREVIEWS (Conforme solicitado)
+// PREVIEWS
 // ==========================================
 
 @Preview(name = "Lista Vazia de Registros", showBackground = true, backgroundColor = 0xFF070C15)

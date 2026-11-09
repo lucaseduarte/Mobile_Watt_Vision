@@ -110,7 +110,7 @@ fun OperacionalFilterBar(
                         onClick = { onStatusChanged(statusOpt) },
                         label = { Text(statusOpt, fontSize = 11.sp) },
                         modifier = Modifier
-                            .heightIn(min = 48.dp)
+                            .height(36.dp)
                             .semantics { contentDescription = "Filtro de status $statusOpt" },
                         colors = FilterChipDefaults.filterChipColors(
                             containerColor = InputBackground,
@@ -126,7 +126,7 @@ fun OperacionalFilterBar(
             if (tabIndex < 2) {
                 Box(
                     modifier = Modifier
-                        .height(48.dp)
+                        .height(36.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .clickable {
                             draftFilters = filters
@@ -139,16 +139,15 @@ fun OperacionalFilterBar(
                             draftFilters = filters
                             isSheetOpen = true
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceDark),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                         shape = RoundedCornerShape(12.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp),
-                        modifier = Modifier.height(48.dp)
+                        modifier = Modifier.height(36.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.FilterList,
                             contentDescription = null,
-                            tint = PrimaryBlue,
+                            tint = TextWhite,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
