@@ -12,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import com.example.watt_vision_mobile.ui.components.WattVisionBottomBar
+import com.example.watt_vision_mobile.ui.screens.configuracoes.ConfiguracoesScreen
+import com.example.watt_vision_mobile.ui.screens.configuracoes.ConfiguracoesViewModel
 import com.example.watt_vision_mobile.ui.screens.dashboard.DashboardScreen
 import com.example.watt_vision_mobile.ui.screens.dashboard.DashboardViewModel
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.EquipamentoDetalheScreen
@@ -33,6 +35,7 @@ class MainActivity : ComponentActivity() {
     private val dashboardViewModel: DashboardViewModel by viewModels()
     private val operacionalViewModel: OperacionalViewModel by viewModels()
     private val equipamentoDetalheViewModel: EquipamentoDetalheViewModel by viewModels()
+    private val configuracoesViewModel: ConfiguracoesViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -119,6 +122,13 @@ class MainActivity : ComponentActivity() {
                                         )
                                     }
                                 }
+                            }
+                            "Configurações" -> {
+                                ConfiguracoesScreen(
+                                    viewModel = configuracoesViewModel,
+                                    onBackClick = { selectedRoute = "Dashboard" },
+                                    modifier = contentModifier
+                                )
                             }
                             else -> {
                                 PlaceholderScreen(

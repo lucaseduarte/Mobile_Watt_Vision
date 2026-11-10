@@ -56,9 +56,8 @@ fun SetorDetalheScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(InputBackground)
-                    .statusBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                    .background(DarkBackground)
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

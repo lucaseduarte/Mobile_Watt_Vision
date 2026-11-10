@@ -55,7 +55,7 @@ fun OperacionalScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(DarkBackground)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
