@@ -32,7 +32,8 @@ data class PontoMedicaoItem(
 data class ConfiguracoesGeralState(
     val nomeEmpresa: String = "Watt Vision",
     val fusoHorario: String = "America/Sao_Paulo",
-    val formatoData: String = "DD/MM/YYYY"
+    val formatoData: String = "DD/MM/YYYY",
+    val tema: String = "Escuro"
 )
 
 data class ConfiguracoesUiState(

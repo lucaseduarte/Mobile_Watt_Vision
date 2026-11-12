@@ -100,7 +100,7 @@ fun StatCardItem(card: StatCardData) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(138.dp)
+            .heightIn(min = 142.dp)
             .shadow(
                 elevation = 2.dp,
                 shape = RoundedCornerShape(16.dp),
@@ -174,7 +174,7 @@ fun StatCardItem(card: StatCardData) {
                 // Ícone com gradiente
                 Box(
                     modifier = Modifier
-                        .size(34.dp)
+                        .size(38.dp)
                         .clip(RoundedCornerShape(10.dp))
                         .background(iconBgBrush),
                     contentAlignment = Alignment.Center
@@ -183,7 +183,7 @@ fun StatCardItem(card: StatCardData) {
                         imageVector = iconVector,
                         contentDescription = null,
                         tint = TextWhite,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
