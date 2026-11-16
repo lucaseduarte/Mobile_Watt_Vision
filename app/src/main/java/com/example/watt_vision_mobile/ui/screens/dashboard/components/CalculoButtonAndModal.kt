@@ -120,7 +120,7 @@ fun CalculoButtonAndModal(
                                         color = TextWhite
                                     )
                                     Text(
-                                        text = "Sistema completo",
+                                        text = "Escopo consultado",
                                         fontSize = 11.sp,
                                         color = TextMuted
                                     )
@@ -208,7 +208,7 @@ fun CalculoButtonAndModal(
                                                 modifier = Modifier.weight(1.5f)
                                             )
                                             Text(
-                                                text = if (semDados) "0 kWh" else String.format(Locale.getDefault(), "%.1f kWh", item.valor),
+                                                text = if (semDados) "Indisponível" else String.format(Locale.forLanguageTag("pt-BR"), "%.1f kWh", item.valor),
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = if (semDados) TextMuted else TextWhite,
@@ -241,7 +241,7 @@ fun CalculoButtonAndModal(
                                             .padding(12.dp)
                                     ) {
                                         Text(
-                                            text = String.format(Locale.getDefault(), "Soma total: %.1f kWh", totalSoma),
+                                            text = String.format(Locale.forLanguageTag("pt-BR"), "Soma total: %.1f kWh", totalSoma),
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = TextWhite,

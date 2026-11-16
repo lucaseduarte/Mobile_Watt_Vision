@@ -100,7 +100,7 @@ fun StatCardItem(card: StatCardData) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 142.dp)
+            .heightIn(min = 168.dp)
             .shadow(
                 elevation = 2.dp,
                 shape = RoundedCornerShape(16.dp),
@@ -214,17 +214,17 @@ fun StatCardItem(card: StatCardData) {
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextWhite,
-                maxLines = 1,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
 
             // Rótulo principal
             Text(
                 text = card.label,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 color = TextSubtle,
-                maxLines = 1,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
 
@@ -233,9 +233,9 @@ fun StatCardItem(card: StatCardData) {
             // Detalhe secundário no rodapé
             Text(
                 text = card.detail,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 color = TextMuted,
-                maxLines = 1,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
         }

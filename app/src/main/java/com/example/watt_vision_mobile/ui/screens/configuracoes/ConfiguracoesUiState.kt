@@ -31,14 +31,18 @@ data class PontoMedicaoItem(
 
 data class ConfiguracoesGeralState(
     val nomeEmpresa: String = "Watt Vision",
-    val fusoHorario: String = "America/Sao_Paulo",
-    val formatoData: String = "DD/MM/YYYY",
+    val fusoHorario: String = "America/Sao_Paulo"
+)
+
+/** Preferências pessoais em memória, sem parâmetros corporativos. */
+data class ConfiguracoesPreferenciasState(
     val tema: String = "Escuro"
 )
 
 data class ConfiguracoesUiState(
     val activeTab: Int = 0, // 0 = Geral, 1 = Tarifas, 2 = Usuários, 3 = Pontos de Medição
     val geral: ConfiguracoesGeralState = ConfiguracoesGeralState(),
+    val preferencias: ConfiguracoesPreferenciasState = ConfiguracoesPreferenciasState(),
     val tarifas: List<TarifaItem> = listOf(
         TarifaItem(1L, "Tarifa 2026 — Convencional", 0.80, "2026-01-01", "", true),
         TarifaItem(2L, "Tarifa 2027 (futura, prevista)", 0.87, "2027-01-01", "", false)
@@ -52,11 +56,5 @@ data class ConfiguracoesUiState(
         PontoMedicaoItem(1L, "Painel Elétrico PE-12", "Equipamento", "PE-12", "PZEM-004T", "PZEM-004T V3", true),
         PontoMedicaoItem(2L, "Elétrica", "Setor", "Elétrica", "PZEM-004T", "PZEM-004T V3", true),
         PontoMedicaoItem(3L, "Subestação Central", "Local", "Subestação Central", "PZEM-004T", "PZEM-004T V3", false)
-    ),
-    val mostrarFormTarifa: Boolean = false,
-    val tarifaEditandoId: Long? = null,
-    val mostrarFormUsuario: Boolean = false,
-    val usuarioEditandoId: Long? = null,
-    val mostrarFormPonto: Boolean = false,
-    val pontoEditandoId: Long? = null
+    )
 )

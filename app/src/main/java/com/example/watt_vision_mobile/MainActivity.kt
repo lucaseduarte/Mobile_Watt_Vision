@@ -5,13 +5,17 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.BackHandler
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import com.example.watt_vision_mobile.ui.components.WattVisionBottomBar
+import com.example.watt_vision_mobile.ui.components.DevelopmentModeBar
+import com.example.watt_vision_mobile.ui.components.DevelopmentLoginReturn
+import com.example.watt_vision_mobile.ui.components.UnavailableDataScreen
 import com.example.watt_vision_mobile.ui.screens.configuracoes.ConfiguracoesScreen
 import com.example.watt_vision_mobile.ui.screens.configuracoes.ConfiguracoesViewModel
 import com.example.watt_vision_mobile.ui.screens.dashboard.DashboardScreen
@@ -42,24 +46,56 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             WattVisionTheme {
-                var isLoggedIn by remember { mutableStateOf(true) }
+                var isLoggedIn by remember { mutableStateOf(false) }
+                var loginRequested by remember { mutableStateOf(false) }
+                var demoSelected by rememberSaveable { mutableStateOf(false) }
                 var selectedRoute by remember { mutableStateOf("Dashboard") }
                 var selectedEquipamentoId by rememberSaveable { mutableStateOf<String?>(null) }
                 var selectedSetorItem by remember { mutableStateOf<SetorItem?>(null) }
                 var selectedLocalItem by remember { mutableStateOf<LocalItem?>(null) }
 
-                if (!isLoggedIn) {
-                    LoginScreen(
-                        viewModel = loginViewModel,
-                        onLoginSuccess = {
-                            Toast.makeText(this, "Login realizado com sucesso!", Toast.LENGTH_SHORT).show()
-                            isLoggedIn = true
-                            selectedRoute = "Dashboard"
+                val canOpenContent = AppAccessPolicy.canOpenContent(
+                    debugBuild = BuildConfig.DEBUG,
+                    authenticated = isLoggedIn,
+                    loginRequested = loginRequested
+                )
+                val canShowDemo = AppAccessPolicy.canShowDemo(BuildConfig.DEBUG, demoSelected)
+
+                if (!canOpenContent) {
+                    BackHandler(enabled = BuildConfig.DEBUG) { loginRequested = false }
+                    Column {
+                        if (BuildConfig.DEBUG) {
+                            DevelopmentLoginReturn(onReturn = { loginRequested = false })
                         }
-                    )
+                        LoginScreen(
+                            viewModel = loginViewModel,
+                            modifier = Modifier.weight(1f),
+                            onLoginSuccess = {
+                                Toast.makeText(this@MainActivity, "Login realizado com sucesso!", Toast.LENGTH_SHORT).show()
+                                isLoggedIn = true
+                                selectedRoute = "Dashboard"
+                            }
+                        )
+                    }
                 } else {
                     Scaffold(
                         containerColor = MaterialTheme.colorScheme.background,
+                        topBar = {
+                            if (BuildConfig.DEBUG) {
+                                DevelopmentModeBar(
+                                    selectedRoute = selectedRoute,
+                                    demoSelected = demoSelected,
+                                    onDemoChanged = { demoSelected = it },
+                                    onLoginClick = { isLoggedIn = false; loginRequested = true },
+                                    onRouteSelected = { route ->
+                                        selectedRoute = route
+                                        selectedEquipamentoId = null
+                                        selectedSetorItem = null
+                                        selectedLocalItem = null
+                                    }
+                                )
+                            }
+                        },
                         bottomBar = {
                             WattVisionBottomBar(
                                 selectedRoute = selectedRoute,
@@ -73,7 +109,9 @@ class MainActivity : ComponentActivity() {
                         }
                     ) { innerPadding ->
                         val contentModifier = Modifier.padding(innerPadding)
-                        when (selectedRoute) {
+                        if ((selectedRoute == "Operacional" || selectedRoute == "Configurações") && !canShowDemo) {
+                            UnavailableDataScreen(modifier = contentModifier)
+                        } else when (selectedRoute) {
                             "Dashboard" -> {
                                 DashboardScreen(
                                     viewModel = dashboardViewModel,

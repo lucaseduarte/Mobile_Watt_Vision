@@ -10,5 +10,6 @@ data class ConsumoDto(
     val consumo_kwh: Double?,
     val tarifa: TarifaDto?,
     val custo_estimado: Double?,
+    val mensagem: String? = null,
     val moeda: String?
 )

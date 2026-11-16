@@ -61,7 +61,7 @@ fun ConfiguracoesScreen(
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Configurações do Sistema",
+                            text = "Consultas e preferências",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextWhite,
@@ -69,48 +69,12 @@ fun ConfiguracoesScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "Informações gerais, tarifas, usuários e pontos de medição",
+                            text = "Informações de consulta e preferências locais",
                             fontSize = 11.sp,
                             color = TextMuted,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                    }
-                }
-            }
-        },
-        bottomBar = {
-            // Barra Inferior de Ações (Cancelar e Salvar Alterações)
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = InputBackground,
-                border = BorderStroke(1.dp, CardBorder)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedButton(
-                        onClick = { viewModel.cancelarAlteracoes(); onBackClick() },
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, CardBorder),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
-                    ) {
-                        Text("Cancelar", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    Button(
-                        onClick = { viewModel.salvarAlteracoes(); onBackClick() },
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Salvar Alterações", color = TextWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -171,9 +135,9 @@ fun ConfiguracoesScreen(
             ) {
                 when (uiState.activeTab) {
                     0 -> AbaGeral(uiState = uiState, viewModel = viewModel)
-                    1 -> AbaTarifas(uiState = uiState, viewModel = viewModel)
-                    2 -> AbaUsuarios(uiState = uiState, viewModel = viewModel)
-                    else -> AbaPontosMedicao(uiState = uiState, viewModel = viewModel)
+                    1 -> AbaTarifas(uiState = uiState)
+                    2 -> AbaUsuarios(uiState = uiState)
+                    else -> AbaPontosMedicao(uiState = uiState)
                 }
             }
         }
@@ -195,80 +159,16 @@ fun AbaGeral(
     ) {
         // Card Informações do Sistema
         item {
-            InfoGrupoCard(titulo = "Informações do Sistema") {
+            InfoGrupoCard(titulo = "Informações da empresa · somente consulta") {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(text = "Nome da empresa", fontSize = 12.sp, color = TextMuted)
-                    OutlinedTextField(
-                        value = uiState.geral.nomeEmpresa,
-                        onValueChange = { viewModel.updateNomeEmpresa(it) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = InputBackground,
-                            unfocusedContainerColor = InputBackground,
-                            focusedBorderColor = PrimaryBlue,
-                            unfocusedBorderColor = CardBorder,
-                            focusedTextColor = TextWhite,
-                            unfocusedTextColor = TextWhite
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Text(text = uiState.geral.nomeEmpresa, color = TextWhite, fontSize = 14.sp)
 
-                    Text(text = "Fuso horário", fontSize = 12.sp, color = TextMuted)
-                    OutlinedTextField(
-                        value = uiState.geral.fusoHorario,
-                        onValueChange = { viewModel.updateFusoHorario(it) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = InputBackground,
-                            unfocusedContainerColor = InputBackground,
-                            focusedBorderColor = PrimaryBlue,
-                            unfocusedBorderColor = CardBorder,
-                            focusedTextColor = TextWhite,
-                            unfocusedTextColor = TextWhite
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Text(text = "Fuso corporativo · somente consulta", fontSize = 12.sp, color = TextMuted)
+                    Text(text = uiState.geral.fusoHorario, color = TextWhite, fontSize = 14.sp)
 
-                    Text(text = "Formato de data exibido", fontSize = 12.sp, color = TextMuted)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        listOf("DD/MM/YYYY", "MM/DD/YYYY", "YYYY/MM/DD").forEach { formato ->
-                            val isSelected = uiState.geral.formatoData == formato
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (isSelected) PrimaryBlue.copy(alpha = 0.25f) else InputBackground,
-                                border = BorderStroke(1.dp, if (isSelected) PrimaryBlue else CardBorder),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { viewModel.updateFormatoData(formato) }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    if (isSelected) {
-                                        Icon(
-                                            imageVector = Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = PrimaryBlue,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                    }
-                                    Text(
-                                        text = formato,
-                                        fontSize = 11.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) TextWhite else TextMuted,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    Text(text = "Formato de data", fontSize = 12.sp, color = TextMuted)
+                    Text(text = "DD/MM/AAAA (fixo)", color = TextWhite, fontSize = 14.sp)
 
                     HorizontalDivider(color = CardBorder, thickness = 1.dp)
 
@@ -300,7 +200,8 @@ fun AbaGeral(
         item {
             InfoGrupoCard(titulo = "Aparência (Preferências visuais)") {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(text = "Tema da Interface", fontSize = 12.sp, color = TextMuted)
+                    Text(text = "Seleção local de tema · demonstração", fontSize = 12.sp, color = TextMuted)
+                    Text(text = "O tema global ainda não está integrado. A interface permanece escura.", fontSize = 12.sp, color = TextMuted)
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.fillMaxWidth()
@@ -310,7 +211,7 @@ fun AbaGeral(
                             Triple("Escuro", Icons.Default.DarkMode, "Modo Escuro (Padrão)")
                         )
                         temas.forEach { (temaKey, icon, label) ->
-                            val isSelected = uiState.geral.tema == temaKey
+                            val isSelected = uiState.preferencias.tema == temaKey
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = if (isSelected) PrimaryBlue.copy(alpha = 0.25f) else InputBackground,
@@ -352,8 +253,7 @@ fun AbaGeral(
 // ==========================================
 @Composable
 fun AbaTarifas(
-    uiState: ConfiguracoesUiState,
-    viewModel: ConfiguracoesViewModel
+    uiState: ConfiguracoesUiState
 ) {
     val vigente = remember(uiState.tarifas) {
         uiState.tarifas.firstOrNull { it.ativa }
@@ -389,7 +289,7 @@ fun AbaTarifas(
                                 border = BorderStroke(1.dp, ToneGreenText)
                             ) {
                                 Text(
-                                    text = "Vigente",
+                                    text = "Ativa",
                                     fontSize = 10.sp,
                                     color = ToneGreenText,
                                     fontWeight = FontWeight.Bold,
@@ -400,8 +300,8 @@ fun AbaTarifas(
                     }
 
                     if (vigente != null) {
-                        val inicioFmt = DateFormatter.formatIsoDate(vigente.inicio, uiState.geral.formatoData)
-                        val fimFmt = if (vigente.fim.isNotBlank()) DateFormatter.formatIsoDate(vigente.fim, uiState.geral.formatoData) else "Atual (Sem data final)"
+                        val inicioFmt = DateFormatter.formatIsoDate(vigente.inicio)
+                        val fimFmt = if (vigente.fim.isNotBlank()) DateFormatter.formatIsoDate(vigente.fim) else "Sem data final"
 
                         Text(
                             text = String.format(Locale.getDefault(), "R$ %.2f / kWh", vigente.valor),
@@ -456,25 +356,10 @@ fun AbaTarifas(
                     )
                 }
 
-                Button(
-                    onClick = { viewModel.abrirFormTarifa() },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "Nova Tarifa", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
             }
         }
 
-        // Formulário de Tarifa
-        if (uiState.mostrarFormTarifa) {
-            item {
-                FormTarifaCard(viewModel = viewModel, uiState = uiState)
-            }
-        }
+        // Consulta do histórico
 
         if (uiState.tarifas.isEmpty()) {
             item {
@@ -489,8 +374,8 @@ fun AbaTarifas(
             }
         } else {
             items(uiState.tarifas, key = { it.id }) { tarifa ->
-                val inicioFmt = DateFormatter.formatIsoDate(tarifa.inicio, uiState.geral.formatoData)
-                val fimFmt = if (tarifa.fim.isNotBlank()) DateFormatter.formatIsoDate(tarifa.fim, uiState.geral.formatoData) else "atual"
+                val inicioFmt = DateFormatter.formatIsoDate(tarifa.inicio)
+                val fimFmt = if (tarifa.fim.isNotBlank()) DateFormatter.formatIsoDate(tarifa.fim) else "atual"
 
                 Surface(
                     shape = RoundedCornerShape(12.dp),
@@ -520,14 +405,6 @@ fun AbaTarifas(
                             )
                         }
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            IconButton(onClick = { viewModel.abrirFormTarifa(tarifa) }) {
-                                Icon(imageVector = Icons.Default.Edit, contentDescription = "Editar", tint = TextMuted, modifier = Modifier.size(18.dp))
-                            }
-                            IconButton(onClick = { viewModel.excluirTarifa(tarifa.id) }) {
-                                Icon(imageVector = Icons.Default.Delete, contentDescription = "Excluir", tint = ToneRedText, modifier = Modifier.size(18.dp))
-                            }
-                        }
                     }
                 }
             }
@@ -535,109 +412,12 @@ fun AbaTarifas(
     }
 }
 
-@Composable
-fun FormTarifaCard(viewModel: ConfiguracoesViewModel, uiState: ConfiguracoesUiState) {
-    val editing = uiState.tarifas.firstOrNull { it.id == uiState.tarifaEditandoId }
-    var desc by remember(uiState.tarifaEditandoId) { mutableStateOf(editing?.descricao ?: "") }
-    var valorStr by remember(uiState.tarifaEditandoId) { mutableStateOf(editing?.valor?.toString() ?: "0.80") }
-    var inicio by remember(uiState.tarifaEditandoId) { mutableStateOf(editing?.inicio ?: "") }
-    var fim by remember(uiState.tarifaEditandoId) { mutableStateOf(editing?.fim ?: "") }
-    var ativa by remember(uiState.tarifaEditandoId) { mutableStateOf(editing?.ativa ?: false) }
-
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = InputBackground,
-        border = BorderStroke(1.dp, PrimaryBlue),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(text = if (editing != null) "Editar Tarifa" else "Cadastrar Tarifa", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-
-            OutlinedTextField(
-                value = desc,
-                onValueChange = { desc = it },
-                label = { Text("Descrição da Tarifa") },
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryBlue, unfocusedBorderColor = CardBorder, focusedTextColor = TextWhite, unfocusedTextColor = TextWhite),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            OutlinedTextField(
-                value = valorStr,
-                onValueChange = { valorStr = it },
-                label = { Text("Valor (R$/kWh)") },
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryBlue, unfocusedBorderColor = CardBorder, focusedTextColor = TextWhite, unfocusedTextColor = TextWhite),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            // Datas divididas em 2 colunas para melhor usabilidade no celular
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = inicio,
-                    onValueChange = { inicio = it },
-                    label = { Text("Data Inicial") },
-                    placeholder = { Text("YYYY-MM-DD", fontSize = 11.sp) },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryBlue, unfocusedBorderColor = CardBorder, focusedTextColor = TextWhite, unfocusedTextColor = TextWhite),
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = fim,
-                    onValueChange = { fim = it },
-                    label = { Text("Data Final (opcional)") },
-                    placeholder = { Text("YYYY-MM-DD", fontSize = 11.sp) },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryBlue, unfocusedBorderColor = CardBorder, focusedTextColor = TextWhite, unfocusedTextColor = TextWhite),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(text = "Definir como Tarifa Ativa:", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Medium)
-                Switch(
-                    checked = ativa,
-                    onCheckedChange = { ativa = it },
-                    colors = SwitchDefaults.colors(checkedThumbColor = TextWhite, checkedTrackColor = PrimaryBlue)
-                )
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedButton(
-                    onClick = { viewModel.fecharFormTarifa() },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Cancelar", color = TextMuted)
-                }
-
-                Button(
-                    onClick = {
-                        val v = valorStr.toDoubleOrNull() ?: 0.80
-                        viewModel.salvarTarifa(desc.ifBlank { "Nova Tarifa" }, v, inicio, fim, ativa)
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Salvar Tarifa", color = TextWhite)
-                }
-            }
-        }
-    }
-}
-
 // ==========================================
-// 3. ABA USUÁRIOS (Visual do Header, Badges Admin/Gestor e Controles de Seleção)
+// 3. ABA USUÁRIOS — SOMENTE CONSULTA
 // ==========================================
 @Composable
 fun AbaUsuarios(
-    uiState: ConfiguracoesUiState,
-    viewModel: ConfiguracoesViewModel
+    uiState: ConfiguracoesUiState
 ) {
     val admins = remember(uiState.usuarios) { uiState.usuarios.count { it.perfil == "Administrador" } }
     val gestores = remember(uiState.usuarios) { uiState.usuarios.count { it.perfil == "Gestor" } }
@@ -678,24 +458,8 @@ fun AbaUsuarios(
                             )
                         }
 
-                        Button(
-                            onClick = { viewModel.abrirFormUsuario() },
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "Novo Usuário", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
                     }
                 }
-            }
-        }
-
-        if (uiState.mostrarFormUsuario) {
-            item {
-                FormUsuarioCard(viewModel = viewModel, uiState = uiState)
             }
         }
 
@@ -777,177 +541,7 @@ fun AbaUsuarios(
                             )
                         }
 
-                        IconButton(onClick = { viewModel.abrirFormUsuario(user) }) {
-                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Editar", tint = TextMuted, modifier = Modifier.size(18.dp))
-                        }
-                        IconButton(onClick = { viewModel.excluirUsuario(user.id) }) {
-                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Excluir", tint = ToneRedText, modifier = Modifier.size(18.dp))
-                        }
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun FormUsuarioCard(viewModel: ConfiguracoesViewModel, uiState: ConfiguracoesUiState) {
-    val editing = uiState.usuarios.firstOrNull { it.id == uiState.usuarioEditandoId }
-    var nome by remember(uiState.usuarioEditandoId) { mutableStateOf(editing?.nome ?: "") }
-    var email by remember(uiState.usuarioEditandoId) { mutableStateOf(editing?.email ?: "") }
-    var senha by remember(uiState.usuarioEditandoId) { mutableStateOf("") }
-    var perfil by remember(uiState.usuarioEditandoId) { mutableStateOf(editing?.perfil ?: "Administrador") }
-    var status by remember(uiState.usuarioEditandoId) { mutableStateOf(editing?.status ?: "Ativo") }
-
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = InputBackground,
-        border = BorderStroke(1.dp, PrimaryBlue),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(text = if (editing != null) "Editar Usuário" else "Cadastrar Usuário", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-
-            OutlinedTextField(
-                value = nome,
-                onValueChange = { nome = it },
-                label = { Text("Nome Completo") },
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryBlue, unfocusedBorderColor = CardBorder, focusedTextColor = TextWhite, unfocusedTextColor = TextWhite),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email") },
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryBlue, unfocusedBorderColor = CardBorder, focusedTextColor = TextWhite, unfocusedTextColor = TextWhite),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            OutlinedTextField(
-                value = senha,
-                onValueChange = { senha = it },
-                label = { Text("Senha (mínimo de 6 caracteres)") },
-                visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryBlue, unfocusedBorderColor = CardBorder, focusedTextColor = TextWhite, unfocusedTextColor = TextWhite),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            // SELETOR DE PERFIL INTUITIVO (Segmented Control alinhado com o frontend)
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(text = "Perfil de Acesso", fontSize = 12.sp, color = TextMuted)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    // Botão Administrador
-                    val isAdmin = perfil == "Administrador"
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isAdmin) Color(0xFF1E1B4B) else SurfaceDark,
-                        border = BorderStroke(1.5.dp, if (isAdmin) Color(0xFF6366F1) else CardBorder),
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { perfil = "Administrador" }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(imageVector = Icons.Default.AdminPanelSettings, contentDescription = null, tint = if (isAdmin) Color(0xFF818CF8) else TextMuted, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Administrador", fontSize = 11.sp, fontWeight = if (isAdmin) FontWeight.Bold else FontWeight.Medium, color = if (isAdmin) Color(0xFF818CF8) else TextMuted)
-                        }
-                    }
-
-                    // Botão Gestor
-                    val isGestor = perfil == "Gestor"
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isGestor) ToneCyanBg else SurfaceDark,
-                        border = BorderStroke(1.5.dp, if (isGestor) ToneCyanText else CardBorder),
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { perfil = "Gestor" }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(imageVector = Icons.Default.Badge, contentDescription = null, tint = if (isGestor) ToneCyanText else TextMuted, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Gestor", fontSize = 11.sp, fontWeight = if (isGestor) FontWeight.Bold else FontWeight.Medium, color = if (isGestor) ToneCyanText else TextMuted)
-                        }
-                    }
-                }
-            }
-
-            // SELETOR DE STATUS INTUITIVO (Segmented Control)
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(text = "Status da Conta", fontSize = 12.sp, color = TextMuted)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    // Botão Ativo
-                    val isAtivo = status == "Ativo"
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isAtivo) ToneGreenBg else SurfaceDark,
-                        border = BorderStroke(1.5.dp, if (isAtivo) ToneGreenText else CardBorder),
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { status = "Ativo" }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = if (isAtivo) ToneGreenText else TextMuted, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Ativo", fontSize = 11.sp, fontWeight = if (isAtivo) FontWeight.Bold else FontWeight.Medium, color = if (isAtivo) ToneGreenText else TextMuted)
-                        }
-                    }
-
-                    // Botão Inativo
-                    val isInativo = status == "Inativo"
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (isInativo) ToneRedBg else SurfaceDark,
-                        border = BorderStroke(1.5.dp, if (isInativo) ToneRedText else CardBorder),
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { status = "Inativo" }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(imageVector = Icons.Default.Block, contentDescription = null, tint = if (isInativo) ToneRedText else TextMuted, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Inativo", fontSize = 11.sp, fontWeight = if (isInativo) FontWeight.Bold else FontWeight.Medium, color = if (isInativo) ToneRedText else TextMuted)
-                        }
-                    }
-                }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(
-                    onClick = { viewModel.fecharFormUsuario() },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Cancelar", color = TextMuted)
-                }
-
-                Button(
-                    onClick = {
-                        viewModel.salvarUsuario(nome.ifBlank { "Novo Usuário" }, email.ifBlank { "user@wattvision.com" }, senha, perfil, status)
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Salvar Usuário", color = TextWhite)
                 }
             }
         }
@@ -955,12 +549,11 @@ fun FormUsuarioCard(viewModel: ConfiguracoesViewModel, uiState: ConfiguracoesUiS
 }
 
 // ==========================================
-// 4. ABA PONTOS DE MEDIÇÃO (Com Seletor de Escopo, Modelo e Status Melhorado)
+// 4. ABA PONTOS DE MEDIÇÃO — SOMENTE CONSULTA
 // ==========================================
 @Composable
 fun AbaPontosMedicao(
-    uiState: ConfiguracoesUiState,
-    viewModel: ConfiguracoesViewModel
+    uiState: ConfiguracoesUiState
 ) {
     val totalAtivos = remember(uiState.pontosMedicao) { uiState.pontosMedicao.count { it.ativo } }
     val totalInativos = remember(uiState.pontosMedicao) { uiState.pontosMedicao.size - totalAtivos }
@@ -989,23 +582,7 @@ fun AbaPontosMedicao(
                         Text(text = "${uiState.pontosMedicao.size} pontos ($totalAtivos ativos · $totalInativos inativos)", fontSize = 11.sp, color = TextMuted)
                     }
 
-                    Button(
-                        onClick = { viewModel.abrirFormPonto() },
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "Novo Ponto", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
                 }
-            }
-        }
-
-        if (uiState.mostrarFormPonto) {
-            item {
-                FormPontoCard(viewModel = viewModel, uiState = uiState)
             }
         }
 
@@ -1045,190 +622,7 @@ fun AbaPontosMedicao(
                             )
                         }
 
-                        IconButton(onClick = { viewModel.abrirFormPonto(ponto) }) {
-                            Icon(imageVector = Icons.Default.Edit, contentDescription = "Editar", tint = TextMuted, modifier = Modifier.size(18.dp))
-                        }
-                        IconButton(onClick = { viewModel.excluirPonto(ponto.id) }) {
-                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Excluir", tint = ToneRedText, modifier = Modifier.size(18.dp))
-                        }
                     }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun FormPontoCard(viewModel: ConfiguracoesViewModel, uiState: ConfiguracoesUiState) {
-    val editing = uiState.pontosMedicao.firstOrNull { it.id == uiState.pontoEditandoId }
-    var nome by remember(uiState.pontoEditandoId) { mutableStateOf(editing?.nome ?: "") }
-    var escopo by remember(uiState.pontoEditandoId) { mutableStateOf(editing?.escopo ?: "Equipamento") }
-    var entidade by remember(uiState.pontoEditandoId) { mutableStateOf(editing?.entidade ?: "") }
-    var dispositivo by remember(uiState.pontoEditandoId) { mutableStateOf(editing?.dispositivo ?: "ESP32-01") }
-    var modelo by remember(uiState.pontoEditandoId) { mutableStateOf(editing?.modelo ?: "PZEM-004T V3") }
-    var ativo by remember(uiState.pontoEditandoId) { mutableStateOf(editing?.ativo ?: true) }
-
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = InputBackground,
-        border = BorderStroke(1.dp, PrimaryBlue),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(text = if (editing != null) "Editar Ponto de Medição" else "Cadastrar Ponto de Medição", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-
-            OutlinedTextField(
-                value = nome,
-                onValueChange = { nome = it },
-                label = { Text("Nome do Ponto") },
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryBlue, unfocusedBorderColor = CardBorder, focusedTextColor = TextWhite, unfocusedTextColor = TextWhite),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = dispositivo,
-                    onValueChange = { dispositivo = it },
-                    label = { Text("Dispositivo") },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryBlue, unfocusedBorderColor = CardBorder, focusedTextColor = TextWhite, unfocusedTextColor = TextWhite),
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = entidade,
-                    onValueChange = { entidade = it },
-                    label = { Text("Entidade Monitorada") },
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PrimaryBlue, unfocusedBorderColor = CardBorder, focusedTextColor = TextWhite, unfocusedTextColor = TextWhite),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            // SELETOR DE ESCOPO INTUITIVO (Equipamento / Setor / Local)
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(text = "Escopo de Medição", fontSize = 12.sp, color = TextMuted)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                    listOf("Equipamento", "Setor", "Local").forEach { item ->
-                        val isSel = escopo == item
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (isSel) PrimaryBlue.copy(alpha = 0.25f) else SurfaceDark,
-                            border = BorderStroke(1.5.dp, if (isSel) PrimaryBlue else CardBorder),
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { escopo = item }
-                        ) {
-                            Text(
-                                text = item,
-                                fontSize = 11.sp,
-                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSel) TextWhite else TextMuted,
-                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
-                    }
-                }
-            }
-
-            // SELETOR DE MODELO INTUITIVO
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(text = "Modelo do Medidor", fontSize = 12.sp, color = TextMuted)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                    listOf("PZEM-004T V3", "PZEM-016", "Outro").forEach { mod ->
-                        val isSel = modelo == mod
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (isSel) ToneCyanBg else SurfaceDark,
-                            border = BorderStroke(1.5.dp, if (isSel) ToneCyanText else CardBorder),
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { modelo = mod }
-                        ) {
-                            Text(
-                                text = mod,
-                                fontSize = 11.sp,
-                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSel) ToneCyanText else TextMuted,
-                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
-                    }
-                }
-            }
-
-            // SELETOR DE STATUS DO PONTO (Ativo / Inativo)
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(text = "Status do Ponto de Medição", fontSize = 12.sp, color = TextMuted)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (ativo) ToneGreenBg else SurfaceDark,
-                        border = BorderStroke(1.5.dp, if (ativo) ToneGreenText else CardBorder),
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { ativo = true }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = if (ativo) ToneGreenText else TextMuted, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Ativo", fontSize = 11.sp, fontWeight = if (ativo) FontWeight.Bold else FontWeight.Medium, color = if (ativo) ToneGreenText else TextMuted)
-                        }
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (!ativo) ToneRedBg else SurfaceDark,
-                        border = BorderStroke(1.5.dp, if (!ativo) ToneRedText else CardBorder),
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { ativo = false }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(imageVector = Icons.Default.Block, contentDescription = null, tint = if (!ativo) ToneRedText else TextMuted, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Inativo", fontSize = 11.sp, fontWeight = if (!ativo) FontWeight.Bold else FontWeight.Medium, color = if (!ativo) ToneRedText else TextMuted)
-                        }
-                    }
-                }
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedButton(
-                    onClick = { viewModel.fecharFormPonto() },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Cancelar", color = TextMuted)
-                }
-
-                Button(
-                    onClick = {
-                        viewModel.salvarPonto(
-                            nome.ifBlank { "Novo Ponto" },
-                            escopo,
-                            entidade.ifBlank { "PE-12" },
-                            dispositivo,
-                            modelo,
-                            ativo = ativo
-                        )
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Salvar Ponto", color = TextWhite)
                 }
             }
         }

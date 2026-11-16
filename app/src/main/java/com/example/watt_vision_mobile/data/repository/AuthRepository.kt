@@ -19,10 +19,8 @@ class AuthRepository(context: Context) {
                 val response = authApiService.login(LoginRequest(email, senha))
                 if (response.isSuccessful && response.body() != null) {
                     val loginResponse = response.body()!!
-                    if (loginResponse.sucesso) {
-                        loginResponse.dados?.token?.let { token ->
-                            tokenManager.saveToken(token)
-                        }
+                    if (loginResponse.hasSessionToken) {
+                        tokenManager.saveToken(loginResponse.dados!!.token!!)
                         Result.success(loginResponse)
                     } else {
                         Result.failure(Exception(loginResponse.mensagem ?: "Erro no login"))

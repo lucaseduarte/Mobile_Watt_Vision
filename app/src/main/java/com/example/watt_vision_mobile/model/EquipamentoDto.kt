@@ -6,5 +6,10 @@ data class EquipamentoDto(
     val nome: String?,
     val tipo: String?,
     val status: String?,
+    val id_setor: Int? = null,
+    val codigo: String? = null,
+    val tipo_equipamento: String? = null,
+    val nome_local: String? = null,
+    val nome_setor: String? = null,
     val localizacao: String?
 )

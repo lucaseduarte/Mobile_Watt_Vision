@@ -191,7 +191,7 @@ fun FiltroSeletorBusca(
                                 .heightIn(min = 48.dp)
                                 .clip(RoundedCornerShape(10.dp))
                                 .clickable {
-                                    onItemSelected(item.title)
+                                    onItemSelected(item.id)
                                     onDismiss()
                                 }
                         ) {

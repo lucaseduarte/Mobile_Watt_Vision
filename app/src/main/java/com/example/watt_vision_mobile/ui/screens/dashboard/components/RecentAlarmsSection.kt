@@ -31,6 +31,8 @@ import com.example.watt_vision_mobile.ui.theme.*
 fun RecentAlarmsSection(
     alarms: List<AlarmData>,
     modifier: Modifier = Modifier,
+    unavailable: Boolean = false,
+    total: Int? = null,
     onSeeAllClick: () -> Unit = {}
 ) {
     Box(
@@ -62,7 +64,7 @@ fun RecentAlarmsSection(
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = "${alarms.size} ativos",
+                        text = if (unavailable) "Indisponível" else "${total ?: alarms.size} ativos",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = ToneYellowText
@@ -70,6 +72,7 @@ fun RecentAlarmsSection(
                 }
             }
 
+            Text("Até cinco mais recentes · dispositivos do escopo, sem filtro de período. Alarmes sem vínculo de dispositivo não entram nesta consulta.", color = TextMuted, fontSize = 12.sp)
             Spacer(modifier = Modifier.height(16.dp))
 
             // Lista de alarmes
@@ -77,6 +80,13 @@ fun RecentAlarmsSection(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                if (alarms.isEmpty()) {
+                    Text(
+                        if (unavailable) "Não foi possível consultar os alarmes." else "Nenhum alarme ativo com vínculo aos dispositivos deste escopo.",
+                        color = TextMuted,
+                        fontSize = 12.sp
+                    )
+                }
                 alarms.forEach { alarm ->
                     AlarmItemRow(alarm = alarm)
                 }
@@ -89,7 +99,7 @@ fun RecentAlarmsSection(
                 onClick = onSeeAllClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(42.dp),
+                    .heightIn(min = 48.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PrimaryBlue.copy(alpha = 0.2f),
                     contentColor = ToneBlueText
@@ -123,6 +133,7 @@ fun AlarmItemRow(alarm: AlarmData) {
         AlarmType.CRITICAL -> Triple(Icons.Default.Error, ToneRedText, ToneRedBg)
         AlarmType.WARNING -> Triple(Icons.Default.Warning, ToneYellowText, ToneYellowBg)
         AlarmType.INFO -> Triple(Icons.Default.Info, ToneCyanText, ToneCyanBg)
+        AlarmType.UNKNOWN -> Triple(Icons.Default.Info, TextMuted, InputBackground)
         AlarmType.SUCCESS -> Triple(Icons.Default.CheckCircle, ToneGreenText, ToneGreenBg)
     }
 
@@ -158,7 +169,7 @@ fun AlarmItemRow(alarm: AlarmData) {
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     color = TextWhite,
-                    maxLines = 1,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
@@ -171,10 +182,10 @@ fun AlarmItemRow(alarm: AlarmData) {
             }
 
             Text(
-                text = alarm.equipment,
+                text = "${alarm.equipment}\nSeveridade: ${alarm.severity} · Status: ${alarm.status}",
                 fontSize = 11.sp,
                 color = TextSubtle,
-                maxLines = 1,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
         }

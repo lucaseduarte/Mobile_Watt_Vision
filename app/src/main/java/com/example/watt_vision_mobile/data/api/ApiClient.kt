@@ -3,7 +3,6 @@ package com.example.watt_vision_mobile.data.api
 import android.content.Context
 import com.example.watt_vision_mobile.data.TokenManager
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
@@ -18,17 +17,8 @@ object ApiClient {
             val tokenManager = TokenManager(context.applicationContext)
             val authInterceptor = AuthInterceptor(tokenManager)
 
-            // HttpLoggingInterceptor configured securely for development:
-            // - Redacts sensitive headers like Authorization to prevent token exposure in logs.
-            val logging = HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
-                redactHeader("Authorization")
-                redactHeader("Cookie")
-            }
-
             val client = OkHttpClient.Builder()
                 .addInterceptor(authInterceptor)
-                .addInterceptor(logging)
                 .connectTimeout(5, TimeUnit.SECONDS)
                 .readTimeout(5, TimeUnit.SECONDS)
                 .writeTimeout(5, TimeUnit.SECONDS)
