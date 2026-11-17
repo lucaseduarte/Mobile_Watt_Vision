@@ -32,9 +32,10 @@ data class PontoMedicaoItem(
 data class ConfiguracoesGeralState(
     val nomeEmpresa: String = "Watt Vision",
     val fusoHorario: String = "America/Sao_Paulo",
-    val formatoData: String = "DD/MM/YYYY",
     val tema: String = "Escuro"
-)
+) {
+    val formatoData: String get() = "DD/MM/AAAA"
+}
 
 data class ConfiguracoesUiState(
     val activeTab: Int = 0, // 0 = Geral, 1 = Tarifas, 2 = Usuários, 3 = Pontos de Medição
@@ -52,11 +53,5 @@ data class ConfiguracoesUiState(
         PontoMedicaoItem(1L, "Painel Elétrico PE-12", "Equipamento", "PE-12", "PZEM-004T", "PZEM-004T V3", true),
         PontoMedicaoItem(2L, "Elétrica", "Setor", "Elétrica", "PZEM-004T", "PZEM-004T V3", true),
         PontoMedicaoItem(3L, "Subestação Central", "Local", "Subestação Central", "PZEM-004T", "PZEM-004T V3", false)
-    ),
-    val mostrarFormTarifa: Boolean = false,
-    val tarifaEditandoId: Long? = null,
-    val mostrarFormUsuario: Boolean = false,
-    val usuarioEditandoId: Long? = null,
-    val mostrarFormPonto: Boolean = false,
-    val pontoEditandoId: Long? = null
+    )
 )
