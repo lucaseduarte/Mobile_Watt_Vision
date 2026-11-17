@@ -26,6 +26,8 @@ import com.example.watt_vision_mobile.ui.screens.operacional.OperacionalScreen
 import com.example.watt_vision_mobile.ui.screens.operacional.OperacionalViewModel
 import com.example.watt_vision_mobile.ui.screens.operacional.SetorDetalheScreen
 import com.example.watt_vision_mobile.ui.screens.operacional.SetorItem
+import com.example.watt_vision_mobile.ui.screens.alarmes.AlarmesScreen
+import com.example.watt_vision_mobile.ui.screens.alarmes.AlarmesViewModel
 import com.example.watt_vision_mobile.ui.screens.placeholder.PlaceholderScreen
 import com.example.watt_vision_mobile.ui.theme.WattVisionTheme
 
@@ -36,6 +38,7 @@ class MainActivity : ComponentActivity() {
     private val operacionalViewModel: OperacionalViewModel by viewModels()
     private val equipamentoDetalheViewModel: EquipamentoDetalheViewModel by viewModels()
     private val configuracoesViewModel: ConfiguracoesViewModel by viewModels()
+    private val alarmesViewModel: AlarmesViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -129,6 +132,9 @@ class MainActivity : ComponentActivity() {
                                     onBackClick = { selectedRoute = "Dashboard" },
                                     modifier = contentModifier
                                 )
+                            }
+                            "Alarmes" -> {
+                                AlarmesScreen(viewModel = alarmesViewModel, modifier = contentModifier)
                             }
                             else -> {
                                 PlaceholderScreen(

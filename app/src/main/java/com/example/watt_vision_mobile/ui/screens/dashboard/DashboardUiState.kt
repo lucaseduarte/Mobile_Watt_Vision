@@ -31,10 +31,6 @@ data class EnergeticMetricData(
     val iconName: String
 )
 
-data class MedicaoPoint(
-    val time: String,
-    val valor: Float
-)
 
 data class ComposicaoItem(
     val id: String,
@@ -47,8 +43,11 @@ data class DashboardFilterState(
     val period: String = "Hoje",
     val location: String = "Todos",
     val sector: String = "Todos",
-    val equipment: String = "Todos"
-) {
+    val equipment: String = "Todos",
+    val locationId: Int? = null,
+    val sectorId: Int? = null,
+    val equipmentId: Int? = null
+) : java.io.Serializable {
     val isDefault: Boolean
         get() = period == "Hoje" && location == "Todos" && sector == "Todos" && equipment == "Todos"
 
@@ -67,8 +66,10 @@ data class DashboardUiState(
     val isLoading: Boolean = false,
     val summaryCards: List<StatCardData> = emptyList(),
     val selectedMetric: String = "tensao", // tensao, consumo, potencia, corrente
-    val selectedChartPeriod: String = "24h", // 1h, 6h, 24h, 7d, 30d
+    val selectedChartPeriod: String = "Hoje",
     val chartPoints: List<MedicaoPoint> = emptyList(),
+    val chart: ChartState = ChartState(),
+    val chartCatalog: ChartCatalog? = null,
     val alarms: List<AlarmData> = emptyList(),
     val indicadores: List<EnergeticMetricData> = emptyList(),
     val composicaoItems: List<ComposicaoItem> = emptyList(),

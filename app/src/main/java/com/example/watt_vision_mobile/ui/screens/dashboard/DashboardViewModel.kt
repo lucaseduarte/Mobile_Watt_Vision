@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -30,12 +31,19 @@ class DashboardViewModel(
 
     private var pollingJob: Job? = null
     private var realSerieTemporalData: List<MedicaoDto> = emptyList()
+    private var chartJob: Job? = null
+    private val chartTokens = com.example.watt_vision_mobile.data.TokenManager(application)
+    private val chartZone = java.time.ZoneId.systemDefault()
+    private var chartPeriod: ChartPeriod? = null
+    private var catalogSession: String? = null
+    private var catalogLoadedAt: Long = 0L
 
     init {
         // Restaura os filtros salvos no SavedStateHandle (process death / rotation persistence)
         val savedFilters = savedStateHandle.get<DashboardFilterState>(SAVED_FILTERS) ?: DashboardFilterState()
-        _uiState.update { it.copy(filters = savedFilters) }
+        _uiState.update { it.copy(filters = savedFilters, selectedChartPeriod = savedFilters.period) }
         startLiveUpdates()
+        restartChart()
     }
 
     fun startLiveUpdates(intervalMillis: Long = 3000L) {
@@ -52,21 +60,23 @@ class DashboardViewModel(
 
     fun loadDashboardData() {
         startLiveUpdates()
+        retryChart()
     }
 
     fun applyFilters(newFilters: DashboardFilterState) {
         savedStateHandle[SAVED_FILTERS] = newFilters
-        _uiState.update { it.copy(filters = newFilters) }
-        loadDashboardData()
+        _uiState.update { it.copy(filters = newFilters, selectedChartPeriod = newFilters.period) }
+        restartChart()
+        startLiveUpdates()
     }
 
     fun removeSpecificFilter(filterKey: String) {
         val current = _uiState.value.filters
         val updated = when (filterKey) {
             "period" -> current.copy(period = "Hoje")
-            "location" -> current.copy(location = "Todos", sector = "Todos", equipment = "Todos")
-            "sector" -> current.copy(sector = "Todos")
-            "equipment" -> current.copy(equipment = "Todos")
+            "location" -> current.copy(location = "Todos", sector = "Todos", equipment = "Todos", locationId = null, sectorId = null, equipmentId = null)
+            "sector" -> current.copy(sector = "Todos", equipment = "Todos", sectorId = null, equipmentId = null)
+            "equipment" -> current.copy(equipment = "Todos", equipmentId = null)
             else -> current
         }
         applyFilters(updated)
@@ -89,22 +99,10 @@ class DashboardViewModel(
 
             val ultimaMedicao = ultimaMedicaoResult.getOrNull() ?: resumoResult.getOrNull()
 
-            val idPzem = ultimaMedicao?.id_pzem ?: 1
-            val horasQuery = when (_uiState.value.selectedChartPeriod) {
-                "1h" -> 1
-                "6h" -> 6
-                "24h" -> 24
-                "7d" -> 168
-                "30d" -> 168
-                else -> 24
-            }
+            // A série do gráfico possui seleção explícita e fluxo independente.
+            val idPzem = ultimaMedicao?.id_pzem
 
-            val serieResult = dashboardRepository.getSerieTemporal(idPzem = idPzem, horas = horasQuery)
-            if (serieResult.isSuccess) {
-                realSerieTemporalData = serieResult.getOrNull() ?: emptyList()
-            }
-
-            val hasRealData = alertasResult.isSuccess || equipamentosResult.isSuccess || ultimaMedicao != null || realSerieTemporalData.isNotEmpty()
+            val hasRealData = alertasResult.isSuccess || equipamentosResult.isSuccess || ultimaMedicao != null
 
             if (hasRealData) {
                 val apiAlertas = alertasResult.getOrNull() ?: emptyList()
@@ -198,9 +196,8 @@ class DashboardViewModel(
             )
 
             val currentTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-            val pointsCount = realSerieTemporalData.size
-            val statusText = if (ultimaMedicao != null || realSerieTemporalData.isNotEmpty()) {
-                "Ao vivo às $currentTime (PZEM $idPzem: $pointsCount pts)"
+            val statusText = if (ultimaMedicao != null) {
+                "Ao vivo às $currentTime (PZEM $idPzem)"
             } else {
                 "Sem resposta da API às $currentTime (Verifique 10.0.2.2:3000)"
             }
@@ -212,8 +209,7 @@ class DashboardViewModel(
                     alarms = alarms,
                     indicadores = indicadores,
                     composicaoItems = equipamentosList,
-                    lastUpdatedText = statusText,
-                    chartPoints = mapToChartPoints(it.selectedMetric)
+                    lastUpdatedText = statusText
                 )
             }
         } catch (_: Exception) {
@@ -233,41 +229,125 @@ class DashboardViewModel(
     }
 
     fun onChartPeriodSelected(period: String) {
-        _uiState.update {
-            it.copy(
-                selectedChartPeriod = period,
-                chartPoints = mapToChartPoints(it.selectedMetric)
-            )
+        _uiState.update { it.copy(selectedChartPeriod = period, filters = it.filters.copy(period = period)) }
+        savedStateHandle[SAVED_FILTERS] = _uiState.value.filters
+        restartChart()
+    }
+
+    fun retryChart() {
+        catalogLoadedAt = 0L
+        restartChart(clear = false)
+    }
+
+    private fun restartChart(clear: Boolean = true) {
+        chartJob?.cancel()
+        if (clear) {
+            realSerieTemporalData = emptyList()
+            chartPeriod = null
+            _uiState.update { it.copy(chartPoints = emptyList(), chart = ChartState()) }
         }
-        loadDashboardData()
+        chartJob = viewModelScope.launch {
+            while (isActive) {
+                fetchChart()
+                delay(5000)
+            }
+        }
+    }
+
+    private suspend fun fetchChart() {
+        val snapshot = _uiState.value
+        val token = chartTokens.getToken()
+        val gate = ChartLogic.gate(!token.isNullOrBlank(), snapshot.selectedChartPeriod)
+        if (gate != null) {
+            realSerieTemporalData = emptyList()
+            catalogSession = null
+            _uiState.update { it.copy(chartPoints = emptyList(), chartCatalog = null, chart = ChartState(status = gate)) }
+            return
+        }
+        if (catalogSession != token) {
+            realSerieTemporalData = emptyList()
+            _uiState.update { it.copy(chartPoints = emptyList(), chartCatalog = null, chart = ChartState(status = ChartStatus.LOADING)) }
+        }
+        if (_uiState.value.chartCatalog == null || catalogLoadedAt == 0L || catalogSession != token ||
+            System.nanoTime() - catalogLoadedAt > 60_000_000_000L) {
+            _uiState.update { it.copy(chart = it.chart.copy(status = ChartStatus.LOADING)) }
+            val catalogResult = dashboardRepository.getChartCatalog()
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            val catalog = catalogResult.getOrNull()
+            if (catalog == null) {
+                _uiState.update { it.copy(chartCatalog = null) }
+                chartFailure(httpChartStatus(catalogResult.exceptionOrNull()))
+                return
+            }
+            catalogSession = token
+            catalogLoadedAt = System.nanoTime()
+            _uiState.update { it.copy(chartCatalog = catalog) }
+        }
+        val (pzemId, resolutionStatus) = _uiState.value.chartCatalog!!.resolve(snapshot.filters)
+        if (resolutionStatus != null || pzemId == null) {
+            realSerieTemporalData = emptyList()
+            chartPeriod = null
+            _uiState.update { it.copy(chartPoints = emptyList(), chart = ChartState(status = resolutionStatus ?: ChartStatus.SELECT_ENTITY)) }
+            return
+        }
+        if (_uiState.value.chart.pzemId != pzemId) {
+            realSerieTemporalData = emptyList()
+            _uiState.update { it.copy(chartPoints = emptyList(), chart = ChartState(status = ChartStatus.LOADING, pzemId = pzemId)) }
+        }
+        val now = java.time.LocalDateTime.now(chartZone)
+        val period = ChartLogic.period(snapshot.selectedChartPeriod, now) ?: return
+        _uiState.update { it.copy(chart = it.chart.copy(status = ChartStatus.LOADING)) }
+        val result = dashboardRepository.getChartSerieTemporal(pzemId, period.hours)
+        // Repositório propaga cancelamento; resultado antigo nunca substitui outro filtro/PZEM.
+        kotlinx.coroutines.currentCoroutineContext().ensureActive()
+        result.fold(onSuccess = { rows ->
+            if (rows.any { it.id_pzem != pzemId }) {
+                chartFailure(ChartStatus.ERROR)
+                return@fold
+            }
+            realSerieTemporalData = rows
+            val scopedPoints = _uiState.value.chartCatalog?.scopedPointIds(snapshot.filters)
+            chartPeriod = period
+            val points = mapToChartPoints(_uiState.value.selectedMetric)
+            _uiState.update { it.copy(chartPoints = points, chart = it.chart.copy(
+                status = if (points.none { point -> point.valor != null }) ChartStatus.EMPTY else ChartStatus.READY,
+                stale = false, truncated = rows.size >= 10000,
+                invalidTimestamps = rows.count { row -> ChartLogic.timestamp(row.data_hora, chartZone) == null },
+                outOfScope = if (scopedPoints == null) 0 else rows.count { row ->
+                    row.id_ponto_medicao !in scopedPoints && ChartLogic.timestamp(row.data_hora, chartZone)?.let(period::contains) == true
+                },
+                updatedAt = now
+            )) }
+        }, onFailure = { error ->
+            chartFailure(httpChartStatus(error))
+        })
+    }
+
+    private fun httpChartStatus(error: Throwable?): ChartStatus = when ((error as? retrofit2.HttpException)?.code()) {
+        401 -> ChartStatus.NO_SESSION
+        403 -> ChartStatus.FORBIDDEN
+        else -> ChartStatus.ERROR
+    }
+
+    private fun chartFailure(status: ChartStatus) {
+        val clear = status == ChartStatus.NO_SESSION || status == ChartStatus.FORBIDDEN
+        if (clear) realSerieTemporalData = emptyList()
+        _uiState.update { it.copy(
+            chartPoints = if (clear) emptyList() else it.chartPoints,
+            chartCatalog = if (clear) null else it.chartCatalog,
+            chart = if (clear) ChartState(status = status, pzemId = it.chart.pzemId)
+                else it.chart.copy(status = status, stale = it.chart.updatedAt != null)
+        ) }
     }
 
     fun setComposicaoModalVisible(visible: Boolean) {
         _uiState.update { it.copy(isComposicaoModalOpen = visible) }
     }
 
-    private fun mapToChartPoints(metric: String): List<MedicaoPoint> {
-        if (realSerieTemporalData.isEmpty()) {
-            return emptyList()
-        }
-        return realSerieTemporalData.mapNotNull { m ->
-            val valFloat = when (metric.lowercase()) {
-                "tensao" -> m.tensao?.toFloat()
-                "corrente" -> m.corrente?.toFloat()
-                "potencia" -> m.potencia_ativa?.toFloat()
-                "consumo" -> m.energia_acumulada?.toFloat()
-                else -> m.tensao?.toFloat() ?: m.potencia_ativa?.toFloat()
-            }
-            val rawTime = m.data_hora ?: ""
-            val formattedTime = when {
-                rawTime.contains("T") -> rawTime.substringAfter("T").take(5)
-                rawTime.contains(" ") -> rawTime.substringAfter(" ").take(5)
-                rawTime.length >= 5 -> rawTime.take(5)
-                else -> "00:00"
-            }
-            if (valFloat != null) MedicaoPoint(formattedTime, valFloat) else null
-        }
-    }
+    private fun mapToChartPoints(metric: String): List<MedicaoPoint> = chartPeriod?.let {
+        ChartLogic.map(realSerieTemporalData, ChartMetric.from(metric), it, chartZone,
+            _uiState.value.chartCatalog?.scopedPointIds(_uiState.value.filters))
+    } ?: emptyList()
 
     companion object {
         private const val SAVED_FILTERS = "saved_filters_state"

@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.watt_vision_mobile.ui.components.filtros.*
 import com.example.watt_vision_mobile.ui.screens.dashboard.DashboardFilterState
+import com.example.watt_vision_mobile.ui.screens.dashboard.ChartCatalog
+import com.example.watt_vision_mobile.ui.screens.dashboard.ChartLogic
 import com.example.watt_vision_mobile.ui.theme.*
 
 // ==========================================
@@ -51,7 +53,8 @@ fun DashboardHeaderAndFilters(
     onRemoveFilter: (String) -> Unit,
     onAlarmesClick: () -> Unit,
     onConfiguracoesClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    catalog: ChartCatalog? = null
 ) {
     var isFilterSheetOpen by rememberSaveable { mutableStateOf(false) }
 
@@ -402,7 +405,7 @@ fun DashboardHeaderAndFilters(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            listOf("Hoje", "7 dias", "30 dias", "Personalizado").forEach { periodOpt ->
+                            ChartLogic.periods.forEach { periodOpt ->
                                 val isSelected = draftFilters.period == periodOpt
                                 FilterChip(
                                     selected = isSelected,
@@ -492,85 +495,63 @@ fun DashboardHeaderAndFilters(
 
     // Seletor de Segundo Nível (FiltroSeletorBusca)
     activeSelector?.let { selector ->
+        val all = FiltroItemModel("Todos", "Todos")
         val (titulo, items) = when (selector) {
-            SelectorType.LOCAL -> {
-                val locais = listOf(
-                    FiltroItemModel("Todos", "Todos"),
-                    FiltroItemModel("1", "Planta Industrial Jandira", "Unidade Fabril SP"),
-                    FiltroItemModel("2", "Planta Industrial Osasco", "Unidade Fabril SP"),
-                    FiltroItemModel("3", "Centro Logístico Alphaville", "Centro de Distribuição"),
-                    FiltroItemModel("4", "Subestação Central", "Energia Principal")
-                )
-                "Local" to locais
-            }
-            SelectorType.SETOR -> {
-                // Cascata: Se Local = "Todos", mostra todos os setores com o nome do local como subtítulo
-                val setoresRaw = if (draftFilters.location == "Todos") {
-                    listOf(
-                        FiltroItemModel("s1", "Produção", "Planta Industrial Jandira"),
-                        FiltroItemModel("s2", "Manutenção", "Planta Industrial Jandira"),
-                        FiltroItemModel("s3", "Caldeiraria", "Planta Industrial Osasco"),
-                        FiltroItemModel("s4", "Logística Avançada", "Centro Logístico Alphaville")
-                    )
-                } else {
-                    listOf(
-                        FiltroItemModel("s1", "Produção", draftFilters.location),
-                        FiltroItemModel("s2", "Manutenção", draftFilters.location)
-                    )
-                }
-                val setoresList = mutableListOf(FiltroItemModel("Todos", "Todos"))
-                setoresList.addAll(setoresRaw)
-                "Setor" to setoresList
-            }
-            SelectorType.EQUIPAMENTO -> {
-                // Cascata: Se Setor = "Todos", exibe equipamentos gerais
-                val eqsRaw = if (draftFilters.sector == "Todos") {
-                    listOf(
-                        FiltroItemModel("e1", "Motor Elétrico WEG 15HP", "Setor Produção"),
-                        FiltroItemModel("e2", "Compressor de Ar Industrial", "Setor Manutenção"),
-                        FiltroItemModel("e3", "Ponte Rolante 10T", "Caldeiraria")
-                    )
-                } else {
-                    listOf(
-                        FiltroItemModel("e1", "Motor Elétrico WEG 15HP", draftFilters.sector),
-                        FiltroItemModel("e2", "Compressor Principal", draftFilters.sector)
-                    )
-                }
-                val eqsList = mutableListOf(FiltroItemModel("Todos", "Todos"))
-                eqsList.addAll(eqsRaw)
-                "Equipamento" to eqsList
-            }
+            SelectorType.LOCAL -> "Local" to (listOf(all) + catalog?.locais.orEmpty().mapNotNull { local ->
+                val id = local.id?.takeIf { it > 0 } ?: return@mapNotNull null
+                val name = local.nome?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                FiltroItemModel(id.toString(), name)
+            })
+            SelectorType.SETOR -> "Setor" to (listOf(all) + catalog?.sectors(draftFilters.locationId).orEmpty().mapNotNull { sector ->
+                val id = sector.id?.takeIf { it > 0 } ?: return@mapNotNull null
+                val name = sector.nome?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                FiltroItemModel(id.toString(), name, catalog?.locais?.firstOrNull { it.id == sector.id_local }?.nome)
+            })
+            SelectorType.EQUIPAMENTO -> "Equipamento" to (listOf(all) + catalog?.equipment(draftFilters.locationId, draftFilters.sectorId).orEmpty().mapNotNull { equipment ->
+                val id = equipment.id?.takeIf { it > 0 } ?: return@mapNotNull null
+                val name = equipment.nome?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                FiltroItemModel(id.toString(), name, catalog?.setores?.firstOrNull { it.id == equipment.id_setor }?.nome)
+            })
         }
 
         val selectedValue = when (selector) {
-            SelectorType.LOCAL -> draftFilters.location
-            SelectorType.SETOR -> draftFilters.sector
-            SelectorType.EQUIPAMENTO -> draftFilters.equipment
+            SelectorType.LOCAL -> draftFilters.locationId?.toString() ?: "Todos"
+            SelectorType.SETOR -> draftFilters.sectorId?.toString() ?: "Todos"
+            SelectorType.EQUIPAMENTO -> draftFilters.equipmentId?.toString() ?: "Todos"
         }
 
         FiltroSeletorBusca(
             titulo = titulo,
             items = items,
             selectedId = selectedValue,
-            onItemSelected = { selectedTitle ->
+            onItemSelected = {},
+            onItemIdSelected = { selectedId ->
+                val selected = items.singleOrNull { it.id == selectedId } ?: return@FiltroSeletorBusca
+                val selectedTitle = selected.title
+                val id = selectedId.toIntOrNull()
                 draftFilters = when (selector) {
                     SelectorType.LOCAL -> {
                         // Mudar Local reseta Setor e Equipamento para "Todos"
                         draftFilters.copy(
                             location = selectedTitle,
+                            locationId = id,
                             sector = "Todos",
-                            equipment = "Todos"
+                            sectorId = null,
+                            equipment = "Todos",
+                            equipmentId = null
                         )
                     }
                     SelectorType.SETOR -> {
                         // Mudar Setor reseta Equipamento para "Todos"
                         draftFilters.copy(
                             sector = selectedTitle,
-                            equipment = "Todos"
+                            sectorId = id,
+                            equipment = "Todos",
+                            equipmentId = null
                         )
                     }
                     SelectorType.EQUIPAMENTO -> {
-                        draftFilters.copy(equipment = selectedTitle)
+                        draftFilters.copy(equipment = selectedTitle, equipmentId = id)
                     }
                 }
                 activeSelector = null

@@ -43,7 +43,8 @@ fun FiltroSeletorBusca(
     selectedId: String,
     onItemSelected: (String) -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onItemIdSelected: ((String) -> Unit)? = null
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var debouncedQuery by rememberSaveable { mutableStateOf("") }
@@ -77,7 +78,7 @@ fun FiltroSeletorBusca(
 
     // Rola automaticamente até o item selecionado ao abrir
     LaunchedEffect(selectedId, items) {
-        val index = filteredItems.indexOfFirst { it.id == selectedId || it.title == selectedId }
+        val index = filteredItems.indexOfFirst { it.id == selectedId || (onItemIdSelected == null && it.title == selectedId) }
         if (index >= 0) {
             listState.animateScrollToItem(index)
         }
@@ -180,7 +181,7 @@ fun FiltroSeletorBusca(
                     contentPadding = PaddingValues(horizontal = 20.dp)
                 ) {
                     items(filteredItems, key = { it.id }) { item ->
-                        val isSelected = item.id == selectedId || item.title == selectedId
+                        val isSelected = item.id == selectedId || (onItemIdSelected == null && item.title == selectedId)
 
                         Surface(
                             shape = RoundedCornerShape(10.dp),
@@ -191,7 +192,8 @@ fun FiltroSeletorBusca(
                                 .heightIn(min = 48.dp)
                                 .clip(RoundedCornerShape(10.dp))
                                 .clickable {
-                                    onItemSelected(item.title)
+                                    if (onItemIdSelected != null) onItemIdSelected(item.id)
+                                    else onItemSelected(item.title)
                                     onDismiss()
                                 }
                         ) {

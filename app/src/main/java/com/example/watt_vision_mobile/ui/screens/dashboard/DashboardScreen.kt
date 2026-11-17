@@ -35,6 +35,7 @@ fun DashboardScreen(
             // 1. Cabeçalho com barra de filtros compacta e ModalBottomSheet
             DashboardHeaderAndFilters(
                 filters = uiState.filters,
+                catalog = uiState.chartCatalog,
                 lastUpdatedText = uiState.lastUpdatedText,
                 onFilterChanged = { newFilters -> viewModel.applyFilters(newFilters) },
                 onRefreshClick = { viewModel.loadDashboardData() },
@@ -62,12 +63,14 @@ fun DashboardScreen(
                 StatCardsSection(cards = uiState.summaryCards)
 
                 // 4. Gráfico "Desempenho do Sistema"
-                SystemPerformanceChart(
+                DashboardChart(
                     points = uiState.chartPoints,
                     selectedMetric = uiState.selectedMetric,
                     selectedPeriod = uiState.selectedChartPeriod,
                     onMetricSelected = { viewModel.onMetricSelected(it) },
-                    onPeriodSelected = { viewModel.onChartPeriodSelected(it) }
+                    onPeriodSelected = { viewModel.onChartPeriodSelected(it) },
+                    state = uiState.chart,
+                    onRetry = viewModel::retryChart
                 )
 
                 // 5. Alarmes Recentes
