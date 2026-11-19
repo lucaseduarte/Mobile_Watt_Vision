@@ -32,6 +32,7 @@ import com.example.watt_vision_mobile.ui.screens.operacional.SetorDetalheScreen
 import com.example.watt_vision_mobile.ui.screens.operacional.SetorItem
 import com.example.watt_vision_mobile.ui.screens.alarmes.AlarmesScreen
 import com.example.watt_vision_mobile.ui.screens.alarmes.AlarmesViewModel
+import com.example.watt_vision_mobile.ui.screens.medicoes.MedicoesScreen
 import com.example.watt_vision_mobile.ui.screens.placeholder.PlaceholderScreen
 import com.example.watt_vision_mobile.ui.theme.WattVisionTheme
 
@@ -169,6 +170,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     modifier = contentModifier
                                 )
+                            }
+                            "Medições" -> routeState.SaveableStateProvider("Medições") {
+                                MedicoesScreen(modifier = contentModifier)
                             }
                             else -> {
                                 PlaceholderScreen(

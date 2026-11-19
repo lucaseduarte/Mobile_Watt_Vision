@@ -5,13 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -193,55 +190,9 @@ fun DashboardHeaderAndFilters(
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable {
-                        draftFilters = filters
-                        isFilterSheetOpen = true
-                    }
-                    .semantics { contentDescription = "Abrir painel de filtros com ${filters.activeCount} filtros ativos" }
-            ) {
-                Button(
-                    onClick = {
-                        draftFilters = filters
-                        isFilterSheetOpen = true
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp),
-                    modifier = Modifier.height(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FilterList,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Filtros",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    if (filters.activeCount > 0) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = "${filters.activeCount}",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PrimaryBlue
-                                )
-                            }
-                        }
-                    }
-                }
+            BotaoFiltros(filters.activeCount) {
+                draftFilters = filters
+                isFilterSheetOpen = true
             }
         }
 
@@ -351,144 +302,67 @@ fun DashboardHeaderAndFilters(
 
     // Modal Bottom Sheet Principal
     if (isFilterSheetOpen) {
-        ModalBottomSheet(
-            onDismissRequest = { isFilterSheetOpen = false },
-            containerColor = SurfaceDark,
-            contentWindowInsets = { WindowInsets.navigationBars }
+        PainelFiltros(
+            onDismiss = { isFilterSheetOpen = false },
+            onClear = { draftFilters = DashboardFilterState() },
+            onApply = {
+                onFilterChanged(draftFilters)
+                isFilterSheetOpen = false
+            }
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.85f)
-            ) {
-                // Cabeçalho do Bottom Sheet
+            // 1. Período: FilterChips em fluxo
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "Período", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSubtle)
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "Filtros",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextWhite
-                    )
-                    IconButton(
-                        onClick = { isFilterSheetOpen = false },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Fechar painel de filtros",
-                            tint = TextMuted
+                    ChartLogic.periods.forEach { periodOpt ->
+                        val isSelected = draftFilters.period == periodOpt
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { draftFilters = draftFilters.copy(period = periodOpt) },
+                            label = { Text(periodOpt, fontSize = 11.sp) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = InputBackground,
+                                selectedContainerColor = PrimaryBlue.copy(alpha = 0.25f),
+                                labelColor = TextMuted,
+                                selectedLabelColor = PrimaryBlue
+                            )
                         )
                     }
                 }
+            }
 
-                HorizontalDivider(color = CardBorder, thickness = 1.dp)
+            // 2. Seletor de Local (FiltroLinhaSeletor)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "Local", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSubtle)
+                FiltroLinhaSeletor(
+                    label = "Local selecionado",
+                    valorAtual = draftFilters.location,
+                    onClick = { activeSelector = SelectorType.LOCAL }
+                )
+            }
 
-                // Conteúdo Rolável
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
-                ) {
-                    // 1. Período: FilterChips em fluxo
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(text = "Período", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSubtle)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            ChartLogic.periods.forEach { periodOpt ->
-                                val isSelected = draftFilters.period == periodOpt
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { draftFilters = draftFilters.copy(period = periodOpt) },
-                                    label = { Text(periodOpt, fontSize = 11.sp) },
-                                    modifier = Modifier.heightIn(min = 48.dp),
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        containerColor = InputBackground,
-                                        selectedContainerColor = PrimaryBlue.copy(alpha = 0.25f),
-                                        labelColor = TextMuted,
-                                        selectedLabelColor = PrimaryBlue
-                                    )
-                                )
-                            }
-                        }
-                    }
+            // 3. Seletor de Setor (FiltroLinhaSeletor com dependência em cascata do Local)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "Setor", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSubtle)
+                FiltroLinhaSeletor(
+                    label = "Setor selecionado",
+                    valorAtual = draftFilters.sector,
+                    onClick = { activeSelector = SelectorType.SETOR }
+                )
+            }
 
-                    // 2. Seletor de Local (FiltroLinhaSeletor)
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(text = "Local", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSubtle)
-                        FiltroLinhaSeletor(
-                            label = "Local selecionado",
-                            valorAtual = draftFilters.location,
-                            onClick = { activeSelector = SelectorType.LOCAL }
-                        )
-                    }
-
-                    // 3. Seletor de Setor (FiltroLinhaSeletor com dependência em cascata do Local)
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(text = "Setor", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSubtle)
-                        FiltroLinhaSeletor(
-                            label = "Setor selecionado",
-                            valorAtual = draftFilters.sector,
-                            onClick = { activeSelector = SelectorType.SETOR }
-                        )
-                    }
-
-                    // 4. Seletor de Equipamento (FiltroLinhaSeletor com dependência em cascata do Setor)
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(text = "Equipamento", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSubtle)
-                        FiltroLinhaSeletor(
-                            label = "Equipamento selecionado",
-                            valorAtual = draftFilters.equipment,
-                            onClick = { activeSelector = SelectorType.EQUIPAMENTO }
-                        )
-                    }
-                }
-
-                HorizontalDivider(color = CardBorder, thickness = 1.dp)
-
-                // Rodapé Fixo: "Limpar" (só mexe no draft) e "Aplicar" (confirma)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(
-                        onClick = {
-                            draftFilters = DashboardFilterState() // Restaura padrões apenas no draft
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                    ) {
-                        Text(text = "Limpar", fontSize = 14.sp, color = TextMuted)
-                    }
-
-                    Button(
-                        onClick = {
-                            onFilterChanged(draftFilters) // Confirma e aplica o draft
-                            isFilterSheetOpen = false
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                    ) {
-                        Text(text = "Aplicar", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
+            // 4. Seletor de Equipamento (FiltroLinhaSeletor com dependência em cascata do Setor)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "Equipamento", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSubtle)
+                FiltroLinhaSeletor(
+                    label = "Equipamento selecionado",
+                    valorAtual = draftFilters.equipment,
+                    onClick = { activeSelector = SelectorType.EQUIPAMENTO }
+                )
             }
         }
     }
@@ -596,11 +470,17 @@ fun FiltroLinhaSeletor(
                 text = label,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextMuted
+                color = TextMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.weight(1f, fill = false).padding(start = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = valorAtual,
+                    modifier = Modifier.weight(1f, fill = false),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextWhite,

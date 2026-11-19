@@ -78,42 +78,6 @@ fun ConfiguracoesScreen(
                     }
                 }
             }
-        },
-        bottomBar = {
-            // Barra Inferior de Ações (Cancelar e Salvar Alterações)
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = InputBackground,
-                border = BorderStroke(1.dp, CardBorder)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedButton(
-                        onClick = { viewModel.cancelarPreferenciasLocais(); onBackClick() },
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, CardBorder),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
-                    ) {
-                        Text("Cancelar", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-
-                    Button(
-                        onClick = { viewModel.salvarPreferenciasLocais(); onBackClick() },
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Salvar Alterações", color = TextWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
         }
     ) { innerPadding ->
         Column(
@@ -213,39 +177,6 @@ fun AbaGeral(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
-
-                    Text(text = "Fuso horário", fontSize = 12.sp, color = TextMuted)
-                    OutlinedTextField(
-                        value = uiState.geral.fusoHorario,
-                        onValueChange = {},
-                        readOnly = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = InputBackground,
-                            unfocusedContainerColor = InputBackground,
-                            focusedBorderColor = PrimaryBlue,
-                            unfocusedBorderColor = CardBorder,
-                            focusedTextColor = TextWhite,
-                            unfocusedTextColor = TextWhite
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Text(text = "Formato de data exibido", fontSize = 12.sp, color = TextMuted)
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = InputBackground,
-                        border = BorderStroke(1.dp, CardBorder),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "DD/MM/AAAA (fixo)",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextWhite,
-                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp)
-                        )
-                    }
 
                     HorizontalDivider(color = CardBorder, thickness = 1.dp)
 
