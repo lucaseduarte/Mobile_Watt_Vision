@@ -2,11 +2,22 @@ package com.example.watt_vision_mobile.ui.screens.alarmes
 
 import com.example.watt_vision_mobile.model.alarmes.Alarme
 import com.example.watt_vision_mobile.model.alarmes.AlarmeDto
+import com.example.watt_vision_mobile.model.alarmes.AlarmeEntidade
+import com.example.watt_vision_mobile.model.alarmes.AlarmeTipoEntidade
 import com.example.watt_vision_mobile.model.alarmes.AlarmeMapper
 import java.time.LocalDateTime
 
 /** Exemplos artificiais, independentes do banco, gerados somente após ativação explícita. */
 object AlarmesDemoData {
+    suspend fun entidade(alarme: Alarme): AlarmeEntidade? {
+        val id = alarme.id?.toInt() ?: return null
+        val nome = alarme.nomeEquipamento ?: return null
+        return AlarmeEntidade(
+            AlarmeTipoEntidade.EQUIPAMENTO, id, nome,
+            setor = "Setor de exemplo", local = "Local de exemplo", demonstracao = true
+        )
+    }
+
     fun create(now: LocalDateTime): List<Alarme> {
         val samples = listOf(
             Triple("ativo", "critico", "energetico"), Triple("ativo", "atencao", "energetico"),
@@ -31,7 +42,8 @@ object AlarmesDemoData {
                 valor_limite = if (category == "energetico") 240.0 else null,
                 mensagem = messages[index], severidade = severity, status = status,
                 data_hora = now.minusMinutes(index * 30L).toString(),
-                tipo_alerta = if (category == "energetico") "Evento energético" else "Evento de comunicação",
+                tipo_alerta = if (category == "energetico") "Limite excedido" else "Dispositivo offline",
+                nome_equipamento = "Equipamento de exemplo ${index + 1}",
                 categoria_alerta = category,
                 reconhecido_por = if (status == "reconhecido") 501 else null,
                 data_reconhecimento = if (status == "reconhecido") now.minusMinutes(index * 30L - 5).toString() else null

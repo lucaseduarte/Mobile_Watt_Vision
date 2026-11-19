@@ -7,6 +7,8 @@ import com.example.watt_vision_mobile.data.TokenManager
 import com.example.watt_vision_mobile.data.api.ApiClient
 import com.example.watt_vision_mobile.data.api.AlarmesApiService
 import com.example.watt_vision_mobile.data.api.AuthApiService
+import com.example.watt_vision_mobile.data.api.ChartCatalogApiService
+import com.example.watt_vision_mobile.model.alarmes.Alarme
 import com.example.watt_vision_mobile.data.repository.AlarmesRepository
 import com.example.watt_vision_mobile.data.repository.AlarmesResult
 import kotlinx.coroutines.Job
@@ -21,12 +23,15 @@ class AlarmesViewModel(application: Application) : AndroidViewModel(application)
     private val tokens = TokenManager(application)
     private val repository = AlarmesRepository(ApiClient.createService<AlarmesApiService>(application),
         ApiClient.createService<AuthApiService>(application), tokens::getToken)
+    private val catalogo = ApiClient.createService<ChartCatalogApiService>(application)
     private val _uiState = MutableStateFlow(AlarmesUiState())
     val uiState = _uiState.asStateFlow()
     private var request: Job? = null
     private var snapshotSession: String? = null
 
     init { refresh() }
+
+    suspend fun entidade(alarme: Alarme) = repository.entidade(alarme, catalogo)
 
     fun updateFilters(filters: AlarmesFilters) { _uiState.update { it.copy(filters = filters) } }
 

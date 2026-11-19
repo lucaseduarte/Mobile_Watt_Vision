@@ -7,7 +7,7 @@ import java.util.Locale
 
 // DESCONHECIDO representa um problema de dados, nunca um estado criado no servidor.
 enum class AlarmeStatus(val code: String, val label: String) {
-    ATIVO("ativo", "Ativo"), RECONHECIDO("reconhecido", "Reconhecido"), DESCONHECIDO("", "Status não informado")
+    ATIVO("ativo", "Ativo"), RECONHECIDO("reconhecido", "Reconhecido"), RESOLVIDO("resolvido", "Resolvido"), DESCONHECIDO("", "Status não informado")
 }
 enum class AlarmeSeveridade(val code: String, val label: String) {
     CRITICO("critico", "Crítico"), ATENCAO("atencao", "Atenção"), INFORMATIVO("informativo", "Informativo"), DESCONHECIDA("", "Severidade não informada")
@@ -15,6 +15,19 @@ enum class AlarmeSeveridade(val code: String, val label: String) {
 enum class AlarmeCategoria(val code: String, val label: String) {
     ENERGETICO("energetico", "Energético"), COMUNICACAO("comunicacao", "Comunicação"), DESCONHECIDA("", "Categoria não informada")
 }
+
+enum class AlarmeTipoEntidade(val label: String) {
+    LOCAL("Local"), SETOR("Setor"), EQUIPAMENTO("Equipamento")
+}
+
+data class AlarmeEntidade(
+    val tipo: AlarmeTipoEntidade,
+    val id: Int,
+    val nome: String,
+    val setor: String? = null,
+    val local: String? = null,
+    val demonstracao: Boolean = false
+)
 
 data class Alarme(
     val id: Long?,
@@ -34,7 +47,8 @@ data class Alarme(
     val dispositivoIotId: Long?,
     val medicaoId: Long?,
     val reconhecidoPor: Long?,
-    val dataReconhecimento: String?
+    val dataReconhecimento: String?,
+    val nomeEquipamento: String? = null
 ) {
     val titulo: String get() = tipo?.takeIf { it.isNotBlank() } ?: "Alarme"
     val statusLabel get() = knownLabel(status.label, statusOriginal, status == AlarmeStatus.DESCONHECIDO, "Status não reconhecido")
@@ -48,15 +62,16 @@ data class Alarme(
 object AlarmeMapper {
     fun map(dto: AlarmeDto): Alarme {
         fun code(raw: String?) = raw?.trim()?.lowercase(Locale.ROOT)
+        val status = code(dto.status).let { if (it == "inativo") "resolvido" else it }
         return Alarme(
             dto.id, dto.tipo_alerta, dto.mensagem,
-            AlarmeStatus.entries.firstOrNull { it.code.isNotEmpty() && it.code == code(dto.status) } ?: AlarmeStatus.DESCONHECIDO,
+            AlarmeStatus.entries.firstOrNull { it.code.isNotEmpty() && it.code == status } ?: AlarmeStatus.DESCONHECIDO,
             AlarmeSeveridade.entries.firstOrNull { it.code.isNotEmpty() && it.code == code(dto.severidade) } ?: AlarmeSeveridade.DESCONHECIDA,
             AlarmeCategoria.entries.firstOrNull { it.code.isNotEmpty() && it.code == code(dto.categoria_alerta) } ?: AlarmeCategoria.DESCONHECIDA,
             dto.status, dto.severidade, dto.categoria_alerta, dto.data_hora,
             dto.valor_detectado?.takeIf { it.isFinite() }, dto.valor_limite?.takeIf { it.isFinite() },
             dto.id_tipo_alerta, dto.id_limite, dto.id_dispositivo_iot, dto.id_medicao,
-            dto.reconhecido_por, dto.data_reconhecimento
+            dto.reconhecido_por, dto.data_reconhecimento, dto.nome_equipamento?.takeIf { it.isNotBlank() }
         )
     }
 }

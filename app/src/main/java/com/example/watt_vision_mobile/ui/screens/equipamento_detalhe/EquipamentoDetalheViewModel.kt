@@ -4,7 +4,11 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
+import com.example.watt_vision_mobile.data.api.ApiClient
+import com.example.watt_vision_mobile.data.api.WattVisionApiService
+import com.example.watt_vision_mobile.data.repository.EquipamentoCadastroRepository
 import com.example.watt_vision_mobile.data.repository.EquipamentoDetalheRepository
+import com.example.watt_vision_mobile.model.alarmes.AlarmeEntidade
 import com.example.watt_vision_mobile.data.repository.MockEquipamentoDetalheRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -26,6 +30,12 @@ class EquipamentoDetalheViewModel(
 
     private val repository: EquipamentoDetalheRepository = MockEquipamentoDetalheRepository()
 
+    private val cadastroRepository by lazy {
+        EquipamentoCadastroRepository(ApiClient.createService<WattVisionApiService>(application))
+    }
+
+    suspend fun carregarCadastro(entidade: AlarmeEntidade) = cadastroRepository.carregar(entidade)
+
     private val _uiState = MutableStateFlow(EquipamentoDetalheUiState())
     val uiState: StateFlow<EquipamentoDetalheUiState> = _uiState.asStateFlow()
 
@@ -37,13 +47,15 @@ class EquipamentoDetalheViewModel(
     private var timerJob: Job? = null
     private var currentBackoffMs = 5000L
 
-    val equipamentoId: String = savedStateHandle.get<String>(KEY_EQUIPAMENTO_ID) ?: "1"
+    val equipamentoId: String
+        get() = savedStateHandle.get<String>(KEY_EQUIPAMENTO_ID) ?: "1"
 
     init {
         startPollingAndTimer()
     }
 
     fun setEquipamentoId(id: String) {
+        if (equipamentoId != id) _uiState.value = EquipamentoDetalheUiState()
         savedStateHandle[KEY_EQUIPAMENTO_ID] = id
         startPollingAndTimer()
     }
@@ -87,7 +99,9 @@ class EquipamentoDetalheViewModel(
             _uiState.update { it.copy(screenState = ScreenState.INITIAL_LOADING) }
         }
 
-        val result = repository.getDetalheEquipamento(equipamentoId)
+        val id = equipamentoId
+        val result = repository.getDetalheEquipamento(id)
+        if (id != equipamentoId) return
 
         if (result.isSuccess) {
             val newData = result.getOrNull()

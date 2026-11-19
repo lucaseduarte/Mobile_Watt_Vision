@@ -87,43 +87,48 @@ fun EquipamentoResumoCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OnlineOfflineBadge(conexaoStatus = data.conexaoStatus)
+                    data.conexaoStatus?.let { OnlineOfflineBadge(conexaoStatus = it) }
 
-                    val isAtivo = data.status.equals("Ativo", ignoreCase = true)
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = if (isAtivo) ToneBlueBg else ToneRedBg,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isAtivo) ToneBlueText.copy(0.4f) else ToneRedText.copy(0.4f))
-                    ) {
-                        Text(
-                            text = if (isAtivo) "● Cadastrado: Ativo" else "● Cadastrado: Inativo",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isAtivo) ToneBlueText else ToneRedText,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
+                    if (data.status.isNotBlank()) {
+                        val isAtivo = data.status.equals("Ativo", ignoreCase = true)
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (isAtivo) ToneBlueBg else ToneRedBg,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (isAtivo) ToneBlueText.copy(0.4f) else ToneRedText.copy(0.4f))
+                        ) {
+                            Text(
+                                text = if (isAtivo) "● Cadastrado: Ativo" else "● Cadastrado: Inativo",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isAtivo) ToneBlueText else ToneRedText,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 }
             }
 
             // Cronômetro local isolado ("Última comunicação: há X")
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Última comunicação: ",
-                    fontSize = 12.sp,
-                    color = TextMuted
-                )
-                Text(
-                    text = relativeTimeString,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextWhite
-                )
+            val ultimaComunicacao = data.ultimaComunicacaoTimestampMs
+            if (ultimaComunicacao != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Última comunicação: ",
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+                    Text(
+                        text = relativeTimeString,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextWhite
+                    )
+                }
             }
 
             // Se estiver Offline, mostra também a data/hora absoluta
-            if (data.conexaoStatus == ConexaoStatus.OFFLINE) {
-                val absTime = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date(data.ultimaComunicacaoTimestampMs))
+            if (data.conexaoStatus == ConexaoStatus.OFFLINE && ultimaComunicacao != null) {
+                val absTime = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date(ultimaComunicacao))
                 Text(
                     text = "Data/Hora absoluta: $absTime",
                     fontSize = 11.sp,

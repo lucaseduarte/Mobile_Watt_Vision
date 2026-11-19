@@ -12,19 +12,19 @@ class AlarmesRulesTest {
         AlarmeMapper.map(AlarmeDto(id = id, status = status, severidade = severity, categoria_alerta = category,
             mensagem = message, tipo_alerta = "Evento de tensão", id_dispositivo_iot = 901, data_hora = "2026-11-17 14:30:00"))
 
-    @Test fun countersIncludeSeverityOnlyForActiveRecords() {
+    @Test fun countersIncludeActiveAndAcknowledgedSeverityAndResolvedRecords() {
         val records = listOf(alarm(1), alarm(2, severity = "atencao"), alarm(3, severity = "informativo"),
-            alarm(4, "reconhecido"), alarm(5, "reconhecido", "atencao"), alarm(6, "inesperado"))
-        assertEquals(AlarmesCounts(3, 1, 1, 2), AlarmesRules.counts(records))
+            alarm(4, "reconhecido"), alarm(5, "reconhecido", "atencao"), alarm(6, "inesperado"), alarm(7, "resolvido"), alarm(8, "inativo"))
+        assertEquals(AlarmesCounts(5, 2, 2, 2), AlarmesRules.counts(records))
         assertEquals(AlarmesCounts(0, 0, 0, 0), AlarmesRules.counts(emptyList()))
     }
 
     @Test fun unknownAndMissingValuesNeverBecomeValidClassifications() {
-        val unknown = alarm(1, "resolvido", "aviso", "outra")
+        val unknown = alarm(1, "inesperado", "aviso", "outra")
         assertEquals(AlarmeStatus.DESCONHECIDO, unknown.status)
         assertEquals(AlarmeSeveridade.DESCONHECIDA, unknown.severidade)
         assertEquals(AlarmeCategoria.DESCONHECIDA, unknown.categoria)
-        assertTrue(unknown.statusLabel.contains("resolvido"))
+        assertTrue(unknown.statusLabel.contains("inesperado"))
         assertEquals(AlarmesCounts(0, 0, 0, 0), AlarmesRules.counts(listOf(unknown)))
         val missing = AlarmeMapper.map(AlarmeDto())
         assertEquals("Status não informado", missing.statusLabel)

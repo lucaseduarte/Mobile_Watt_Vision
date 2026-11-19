@@ -1,11 +1,10 @@
 package com.example.watt_vision_mobile.ui.screens.alarmes
 
-import com.example.watt_vision_mobile.data.api.AlarmesApiService
-import com.example.watt_vision_mobile.data.api.AuthApiService
+import com.example.watt_vision_mobile.data.api.*
 import com.example.watt_vision_mobile.data.repository.AlarmesRepository
 import com.example.watt_vision_mobile.data.repository.AlarmesResult
 import com.example.watt_vision_mobile.model.*
-import com.example.watt_vision_mobile.model.alarmes.AlarmeDto
+import com.example.watt_vision_mobile.model.alarmes.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -20,6 +19,10 @@ class AlarmesRepositoryTest {
         var calls = 0
         var error: Exception? = null
         var result: Response<ApiResponse<List<AlarmeDto>>> = Response.success(ApiResponse(true, null, emptyList()))
+        var limite: AlarmeLimiteDto? = null
+        override suspend fun limite(id: Long) = Response.success(ApiResponse(true, null, limite))
+        var pontos = emptyList<AlarmePontoDto>()
+        override suspend fun pontos() = Response.success(ApiResponse(true, null, pontos))
         override suspend fun listar(): Response<ApiResponse<List<AlarmeDto>>> {
             calls++
             error?.let { throw it }
@@ -92,9 +95,63 @@ class AlarmesRepositoryTest {
         assertThrows(CancellationException::class.java) { runBlocking { AlarmesRepository(alerts, Auth()) { "somente-fake-de-teste" }.load() } }
     }
 
-    @Test fun serviceDeclaresOnlyAReadEndpoint() {
+    @Test fun equipmentNamesUseOnlyUnambiguousDeviceLinks() = runBlocking {
+        val alerts = Alerts().apply {
+            result = Response.success(ApiResponse(true, null, listOf(
+                AlarmeDto(id_dispositivo_iot = 1),
+                AlarmeDto(id_dispositivo_iot = 2),
+                AlarmeDto(id_dispositivo_iot = 2, nome_equipamento = "Nome do alerta")
+            )))
+            pontos = listOf(AlarmePontoDto(1, "Motor"), AlarmePontoDto(1, "Motor"),
+                AlarmePontoDto(2, "Bomba"), AlarmePontoDto(2, "Ventilador"))
+        }
+        val result = AlarmesRepository(alerts, Auth()) { "sessao-de-teste" }.load() as AlarmesResult.Success
+        assertEquals(listOf("Motor", null, "Nome do alerta"), result.records.map { it.nomeEquipamento })
+    }
+
+    @Test fun detailUsesLimitScopeAndResolvesItsCatalogHierarchy() = runBlocking {
+        val alerts = Alerts().apply {
+            pontos = listOf(AlarmePontoDto(1, "Motor", id_equipamento = 3))
+        }
+        val repo = AlarmesRepository(alerts, Auth()) { "sessao-de-teste" }
+        val alarm = AlarmeMapper.map(AlarmeDto(id_limite = 4, id_dispositivo_iot = 1))
+
+        alerts.limite = AlarmeLimiteDto(null, null, 3)
+        assertEquals(AlarmeEntidade(AlarmeTipoEntidade.EQUIPAMENTO, 3, "Motor", "Produção", "Unidade"),
+            repo.entidade(alarm, Catalogo()))
+        alerts.limite = AlarmeLimiteDto(null, 2, null)
+        assertEquals(AlarmeEntidade(AlarmeTipoEntidade.SETOR, 2, "Produção", local = "Unidade"),
+            repo.entidade(alarm, Catalogo()))
+        alerts.limite = AlarmeLimiteDto(1, null, null)
+        assertEquals(AlarmeEntidade(AlarmeTipoEntidade.LOCAL, 1, "Unidade"),
+            repo.entidade(alarm, Catalogo()))
+        alerts.limite = null
+        assertNull(repo.entidade(alarm, Catalogo()))
+    }
+
+    @Test fun communicationDetailRequiresOneUnambiguousOperationalTarget() = runBlocking {
+        val alerts = Alerts().apply {
+            pontos = listOf(AlarmePontoDto(1, "Motor", id_equipamento = 3))
+        }
+        val repo = AlarmesRepository(alerts, Auth()) { "sessao-de-teste" }
+        val alarm = AlarmeMapper.map(AlarmeDto(id_dispositivo_iot = 1))
+        assertEquals(AlarmeEntidade(AlarmeTipoEntidade.EQUIPAMENTO, 3, "Motor", "Produção", "Unidade"),
+            repo.entidade(alarm, Catalogo()))
+        alerts.pontos += AlarmePontoDto(1, null, id_setor = 2)
+        assertNull(repo.entidade(alarm, Catalogo()))
+    }
+
+    private class Catalogo : ChartCatalogApiService {
+        override suspend fun locais() = Response.success(ApiResponse(true, null, listOf(ChartLocalDto(1, "Unidade"))))
+        override suspend fun setores() = Response.success(ApiResponse(true, null, listOf(ChartSectorDto(2, "Produção", 1))))
+        override suspend fun equipamentos() = Response.success(ApiResponse(true, null, listOf(ChartEquipmentDto(3, "Motor", 2))))
+        override suspend fun pontos(): Response<ApiResponse<List<ChartPointDto>>> = error("Consulta inesperada")
+        override suspend fun sensores(): Response<ApiResponse<List<ChartSensorDto>>> = error("Consulta inesperada")
+    }
+
+    @Test fun serviceDeclaresOnlyReadEndpoints() {
         val methods = AlarmesApiService::class.java.declaredMethods.filterNot { it.isSynthetic }
-        assertEquals(1, methods.size)
-        assertEquals("api/alertas", requireNotNull(methods.single().getAnnotation(GET::class.java)).value)
+        assertEquals(setOf("api/alertas", "api/pontos-medicao", "api/limites/{id}"),
+            methods.map { requireNotNull(it.getAnnotation(GET::class.java)).value }.toSet())
     }
 }

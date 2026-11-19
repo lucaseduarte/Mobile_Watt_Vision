@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.watt_vision_mobile.model.alarmes.AlarmeEntidade
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.components.*
 import com.example.watt_vision_mobile.ui.theme.*
 
@@ -30,10 +31,24 @@ import com.example.watt_vision_mobile.ui.theme.*
 fun EquipamentoDetalheScreen(
     viewModel: EquipamentoDetalheViewModel,
     onBackClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    entidadeDoAlarme: AlarmeEntidade? = null
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val relativeTimeString by viewModel.relativeTimeString.collectAsStateWithLifecycle()
+    val uiState: EquipamentoDetalheUiState
+    val relativeTimeString: String
+    if (entidadeDoAlarme == null) {
+        uiState = viewModel.uiState.collectAsStateWithLifecycle().value
+        relativeTimeString = viewModel.relativeTimeString.collectAsStateWithLifecycle().value
+    } else {
+        val cadastro by produceState<EquipamentoDetalheData?>(null, entidadeDoAlarme) {
+            value = viewModel.carregarCadastro(entidadeDoAlarme)
+        }
+        uiState = EquipamentoDetalheUiState(
+            screenState = if (cadastro == null) ScreenState.INITIAL_LOADING else ScreenState.UPDATED,
+            data = cadastro
+        )
+        relativeTimeString = ""
+    }
 
     // Trata o botão de voltar físico/gesto do sistema Android mantendo intactos os filtros da lista Operacional
     BackHandler {
@@ -59,7 +74,11 @@ fun EquipamentoDetalheScreen(
                         onClick = onBackClick,
                         modifier = Modifier
                             .size(48.dp)
-                            .semantics { contentDescription = "Voltar para lista de equipamentos" }
+                            .semantics { contentDescription = if (entidadeDoAlarme == null) {
+                                    "Voltar para lista de equipamentos"
+                                } else {
+                                    "Voltar aos alarmes"
+                                } }
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -73,16 +92,16 @@ fun EquipamentoDetalheScreen(
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = uiState.data?.nome ?: "Detalhe do Equipamento",
+                            text = uiState.data?.nome ?: entidadeDoAlarme?.nome ?: "Detalhe do Equipamento",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextWhite,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        val subtitulo = if (uiState.data != null) {
-                            "${uiState.data!!.codigo}  ·  ${uiState.data!!.localNome}  ·  ${uiState.data!!.setorNome}"
-                        } else "Carregando..."
+                        val subtitulo = uiState.data?.let { data ->
+                            listOf(data.codigo, data.localNome, data.setorNome).filter { it.isNotBlank() }.joinToString("  ·  ")
+                        } ?: "Carregando..."
                         Text(
                             text = subtitulo,
                             fontSize = 11.sp,
@@ -160,15 +179,17 @@ fun EquipamentoDetalheScreen(
                         val liveAnnouncement = if (uiState.hasNewCriticalAlarm) {
                             "Atenção: Novo alarme crítico registrado no equipamento ${data.nome}"
                         } else {
-                            "Status de conexão atualizado para ${data.conexaoStatus.name}"
+                            data.conexaoStatus?.let { "Status de conexão atualizado para ${it.name}" }
                         }
 
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .semantics {
-                                    this.liveRegion = liveRegionMode
-                                    this.contentDescription = liveAnnouncement
+                                    if (liveAnnouncement != null) {
+                                        this.liveRegion = liveRegionMode
+                                        this.contentDescription = liveAnnouncement
+                                    }
                                 }
                         ) {
                             // Aviso discreto de dados desatualizados (STALE) caso haja falha temporária de conexão
@@ -207,16 +228,13 @@ fun EquipamentoDetalheScreen(
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 // 1. Card de Resumo (Status Online/Offline e Cronômetro Relativo Local)
-                                item {
-                                    EquipamentoResumoCard(
-                                        data = data,
-                                        relativeTimeString = relativeTimeString
-                                    )
+                                if (data.conexaoStatus != null || data.status.isNotBlank()) {
+                                    item { EquipamentoResumoCard(data = data, relativeTimeString = relativeTimeString) }
                                 }
 
                                 // 2. Seção de Alarmes do Equipamento
-                                item {
-                                    AlarmesSecao(alarmes = data.alarmes)
+                                if (entidadeDoAlarme == null) {
+                                    item { AlarmesSecao(alarmes = data.alarmes) }
                                 }
 
                                 // 3. Seção Informações — Identificação

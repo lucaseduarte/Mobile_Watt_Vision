@@ -8,6 +8,7 @@ import com.example.watt_vision_mobile.model.MedicaoDto
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Query
+import retrofit2.http.Path
 
 interface WattVisionApiService {
     @GET("api/medicoes/resumo")
@@ -31,6 +32,9 @@ interface WattVisionApiService {
 
     @GET("api/equipamentos")
     suspend fun getEquipamentos(): Response<ApiResponse<List<EquipamentoDto>>>
+
+    @GET("api/equipamentos/{id}")
+    suspend fun getEquipamento(@Path("id") id: Int): Response<ApiResponse<EquipamentoDto>>
 
     @GET("api/alertas")
     suspend fun getAlertas(): Response<ApiResponse<List<AlertaDto>>>

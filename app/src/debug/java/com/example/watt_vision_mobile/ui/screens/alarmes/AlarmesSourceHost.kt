@@ -7,12 +7,21 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import com.example.watt_vision_mobile.model.alarmes.Alarme
+import com.example.watt_vision_mobile.model.alarmes.AlarmeEntidade
 import androidx.compose.ui.unit.sp
 import com.example.watt_vision_mobile.ui.theme.ToneYellowText
 import java.time.LocalDateTime
 
 @Composable
-fun AlarmesSourceHost(realState: AlarmesUiState, onFiltersChanged: (AlarmesFilters) -> Unit, onRefresh: () -> Unit, modifier: Modifier) {
+fun AlarmesSourceHost(
+    realState: AlarmesUiState,
+    onFiltersChanged: (AlarmesFilters) -> Unit,
+    onRefresh: () -> Unit,
+    modifier: Modifier,
+    carregarEntidade: suspend (Alarme) -> AlarmeEntidade?,
+    onEntidadeClick: (AlarmeEntidade) -> Unit
+) {
     var demonstration by rememberSaveable { mutableStateOf(false) }
     var demoState by remember { mutableStateOf<AlarmesUiState?>(null) }
     fun refreshDemo() {
@@ -28,6 +37,8 @@ fun AlarmesSourceHost(realState: AlarmesUiState, onFiltersChanged: (AlarmesFilte
         },
         onRefresh = { if (demonstration) refreshDemo() else onRefresh() },
         modifier = modifier,
+        carregarEntidade = if (demonstration) AlarmesDemoData::entidade else carregarEntidade,
+        onEntidadeClick = onEntidadeClick,
         modeControl = {
             Column(Modifier.fillMaxWidth()) {
                 TextButton(onClick = {

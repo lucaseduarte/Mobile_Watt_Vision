@@ -1,11 +1,46 @@
 package com.example.watt_vision_mobile.data.repository
 
+import com.example.watt_vision_mobile.data.api.WattVisionApiService
+import com.example.watt_vision_mobile.model.alarmes.AlarmeEntidade
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 interface EquipamentoDetalheRepository {
     suspend fun getDetalheEquipamento(id: String): Result<EquipamentoDetalheData>
+}
+
+class EquipamentoCadastroRepository(private val api: WattVisionApiService) {
+    suspend fun carregar(entidade: AlarmeEntidade): EquipamentoDetalheData {
+        val cadastro = if (entidade.demonstracao) null else try {
+            api.getEquipamento(entidade.id)
+                .takeIf { it.isSuccessful }?.body()?.takeIf { it.sucesso }?.dados
+                ?.takeIf { it.id == entidade.id }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        }
+
+        return EquipamentoDetalheData(
+            id = entidade.id.toString(),
+            codigo = cadastro?.codigo.orEmpty(),
+            nome = cadastro?.nome?.takeIf { it.isNotBlank() } ?: entidade.nome,
+            fabricante = cadastro?.fabricante.orEmpty(),
+            modelo = cadastro?.modelo.orEmpty(),
+            numeroSerie = cadastro?.numero_serie.orEmpty(),
+            tensaoNominalV = cadastro?.tensao_nominal,
+            dataInstalacao = cadastro?.data_instalacao?.substringBefore('T'),
+            localNome = cadastro?.nome_local ?: entidade.local.orEmpty(),
+            setorNome = cadastro?.nome_setor ?: entidade.setor.orEmpty(),
+            tipo = (cadastro?.tipo_equipamento ?: cadastro?.tipo).orEmpty(),
+            status = cadastro?.status.orEmpty(),
+            descricao = cadastro?.descricao.orEmpty(),
+            conexaoStatus = null,
+            ultimaComunicacaoTimestampMs = null
+        )
+    }
 }
 
 class MockEquipamentoDetalheRepository : EquipamentoDetalheRepository {

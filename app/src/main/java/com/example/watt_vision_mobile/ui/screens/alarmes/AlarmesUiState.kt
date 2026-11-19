@@ -15,15 +15,18 @@ data class AlarmesFilters(
     val activeCount get() = listOf(status, severidade, categoria).count { it != null }
 }
 
-data class AlarmesCounts(val ativos: Int, val criticos: Int, val atencao: Int, val reconhecidos: Int)
+data class AlarmesCounts(val ativos: Int, val criticos: Int, val atencao: Int, val resolvidos: Int)
 
 object AlarmesRules {
-    fun counts(records: List<Alarme>) = AlarmesCounts(
-        records.count { it.status == AlarmeStatus.ATIVO },
-        records.count { it.status == AlarmeStatus.ATIVO && it.severidade == AlarmeSeveridade.CRITICO },
-        records.count { it.status == AlarmeStatus.ATIVO && it.severidade == AlarmeSeveridade.ATENCAO },
-        records.count { it.status == AlarmeStatus.RECONHECIDO }
-    )
+    fun counts(records: List<Alarme>): AlarmesCounts {
+        val ativos = records.filter { it.status == AlarmeStatus.ATIVO || it.status == AlarmeStatus.RECONHECIDO }
+        return AlarmesCounts(
+            ativos.size,
+            ativos.count { it.severidade == AlarmeSeveridade.CRITICO },
+            ativos.count { it.severidade == AlarmeSeveridade.ATENCAO },
+            records.count { it.status == AlarmeStatus.RESOLVIDO }
+        )
+    }
 
     private fun normalize(text: String): String = Normalizer.normalize(text, Normalizer.Form.NFD)
         .replace("\\p{M}+".toRegex(), "").lowercase(Locale.ROOT)
@@ -35,7 +38,7 @@ object AlarmesRules {
                 (filters.severidade == null || record.severidade == filters.severidade) &&
                 (filters.categoria == null || record.categoria == filters.categoria) &&
                 (search.isEmpty() || normalize(listOfNotNull(
-                    record.mensagem, record.tipo, record.id?.toString(), record.statusLabel,
+                    record.mensagem, record.tipo, record.nomeEquipamento, record.id?.toString(), record.statusLabel,
                     record.severidadeLabel, record.categoriaLabel,
                     record.dispositivoIotId?.let { "Dispositivo IoT $it" }, record.medicaoId?.let { "Medição $it" }
                 ).joinToString(" ")).contains(search))

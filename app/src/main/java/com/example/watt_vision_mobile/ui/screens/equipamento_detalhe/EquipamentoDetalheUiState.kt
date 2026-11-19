@@ -39,8 +39,8 @@ data class EquipamentoDetalheData(
     val tipo: String,
     val status: String, // Ativo ou Inativo
     val descricao: String,
-    val conexaoStatus: ConexaoStatus,
-    val ultimaComunicacaoTimestampMs: Long,
+    val conexaoStatus: ConexaoStatus?,
+    val ultimaComunicacaoTimestampMs: Long?,
     val alarmes: List<AlertaDetalheItem> = emptyList()
 )
 

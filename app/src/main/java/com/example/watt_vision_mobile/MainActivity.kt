@@ -10,7 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
+import com.example.watt_vision_mobile.model.alarmes.AlarmeEntidade
+import com.example.watt_vision_mobile.model.alarmes.AlarmeTipoEntidade
 import com.example.watt_vision_mobile.ui.components.WattVisionBottomBar
 import com.example.watt_vision_mobile.ui.screens.configuracoes.ConfiguracoesScreen
 import com.example.watt_vision_mobile.ui.screens.configuracoes.ConfiguracoesViewModel
@@ -20,6 +23,7 @@ import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.Equipamento
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.EquipamentoDetalheViewModel
 import com.example.watt_vision_mobile.ui.screens.login.LoginScreen
 import com.example.watt_vision_mobile.ui.screens.login.LoginViewModel
+import com.example.watt_vision_mobile.ui.screens.operacional.EntidadeOperacionalScreen
 import com.example.watt_vision_mobile.ui.screens.operacional.LocalDetalheScreen
 import com.example.watt_vision_mobile.ui.screens.operacional.LocalItem
 import com.example.watt_vision_mobile.ui.screens.operacional.OperacionalScreen
@@ -45,10 +49,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             WattVisionTheme {
+                val routeState = rememberSaveableStateHolder()
                 var isLoggedIn by remember { mutableStateOf(true) }
                 var selectedRoute by remember { mutableStateOf("Dashboard") }
                 var selectedEquipamentoId by rememberSaveable { mutableStateOf<String?>(null) }
                 var selectedSetorItem by remember { mutableStateOf<SetorItem?>(null) }
+                var entidadeDoAlarme by remember { mutableStateOf<AlarmeEntidade?>(null) }
                 var selectedLocalItem by remember { mutableStateOf<LocalItem?>(null) }
 
                 if (!isLoggedIn) {
@@ -71,6 +77,7 @@ class MainActivity : ComponentActivity() {
                                     selectedEquipamentoId = null
                                     selectedSetorItem = null
                                     selectedLocalItem = null
+                                    entidadeDoAlarme = null
                                 }
                             )
                         }
@@ -85,7 +92,27 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             "Operacional" -> {
+                                val entidade = entidadeDoAlarme
+                                val voltarAosAlarmes = {
+                                    entidadeDoAlarme = null
+                                    selectedRoute = "Alarmes"
+                                }
                                 when {
+                                    entidade?.tipo == AlarmeTipoEntidade.EQUIPAMENTO -> {
+                                        EquipamentoDetalheScreen(
+                                            viewModel = equipamentoDetalheViewModel,
+                                            onBackClick = voltarAosAlarmes,
+                                            modifier = contentModifier,
+                                            entidadeDoAlarme = entidade
+                                        )
+                                    }
+                                    entidade != null -> {
+                                        EntidadeOperacionalScreen(
+                                            entidade = entidade,
+                                            onBackClick = voltarAosAlarmes,
+                                            modifier = contentModifier
+                                        )
+                                    }
                                     selectedEquipamentoId != null -> {
                                         EquipamentoDetalheScreen(
                                             viewModel = equipamentoDetalheViewModel,
@@ -133,8 +160,15 @@ class MainActivity : ComponentActivity() {
                                     modifier = contentModifier
                                 )
                             }
-                            "Alarmes" -> {
-                                AlarmesScreen(viewModel = alarmesViewModel, modifier = contentModifier)
+                            "Alarmes" -> routeState.SaveableStateProvider("Alarmes") {
+                                AlarmesScreen(
+                                    viewModel = alarmesViewModel,
+                                    onEntidadeClick = { entidade ->
+                                        entidadeDoAlarme = entidade
+                                        selectedRoute = "Operacional"
+                                    },
+                                    modifier = contentModifier
+                                )
                             }
                             else -> {
                                 PlaceholderScreen(

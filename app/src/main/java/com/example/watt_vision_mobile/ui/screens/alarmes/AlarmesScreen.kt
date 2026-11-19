@@ -24,9 +24,9 @@ import com.example.watt_vision_mobile.ui.screens.alarmes.components.*
 import com.example.watt_vision_mobile.ui.theme.*
 
 @Composable
-fun AlarmesScreen(viewModel: AlarmesViewModel, modifier: Modifier = Modifier) {
+fun AlarmesScreen(viewModel: AlarmesViewModel, onEntidadeClick: (AlarmeEntidade) -> Unit, modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsState()
-    AlarmesSourceHost(state, viewModel::updateFilters, viewModel::refresh, modifier)
+    AlarmesSourceHost(state, viewModel::updateFilters, viewModel::refresh, modifier, viewModel::entidade, onEntidadeClick)
 }
 
 @Composable
@@ -35,6 +35,8 @@ fun AlarmesContent(
     onFiltersChanged: (AlarmesFilters) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    carregarEntidade: suspend (Alarme) -> AlarmeEntidade?,
+    onEntidadeClick: (AlarmeEntidade) -> Unit,
     modeControl: (@Composable () -> Unit)? = null
 ) {
     var filtersOpen by rememberSaveable { mutableStateOf(false) }
@@ -61,7 +63,7 @@ fun AlarmesContent(
         item { AlarmesIndicators(counts) }
         item {
             OutlinedTextField(value = state.filters.query, onValueChange = { onFiltersChanged(state.filters.copy(query = it)) },
-                placeholder = { Text("Buscar alarmes…", fontSize = 13.sp) }, singleLine = true,
+                placeholder = { Text("Buscar alarme ou equipamento…", fontSize = 13.sp) }, singleLine = true,
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = TextMuted) },
                 trailingIcon = { if (state.filters.query.isNotEmpty()) IconButton(onClick = { onFiltersChanged(state.filters.copy(query = "")) }) {
                     Icon(Icons.Default.Close, "Limpar pesquisa", tint = TextMuted)
@@ -73,7 +75,12 @@ fun AlarmesContent(
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(if (state.hasSnapshot) "${visible.size} de ${state.records.size} alarmes" else "Lista de alarmes", fontSize = 12.sp, color = TextSubtle)
-                OutlinedButton(onClick = { filtersOpen = true }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Button(
+                    onClick = { filtersOpen = true },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue, contentColor = TextWhite),
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) {
                     Icon(Icons.Default.FilterList, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(if (state.filters.activeCount > 0) "Filtros (${state.filters.activeCount})" else "Filtros", fontSize = 12.sp)
@@ -110,7 +117,17 @@ fun AlarmesContent(
         }
     }
     if (filtersOpen) AlarmesFiltersSheet(state.filters, onFiltersChanged) { filtersOpen = false }
-    selected?.let { record -> AlarmeDetailsSheet(record) { selected = null } }
+    selected?.let { record ->
+        AlarmeDetailsSheet(
+            alarme = record,
+            carregarEntidade = carregarEntidade,
+            onEntidadeClick = { entidade ->
+                selected = null
+                onEntidadeClick(entidade)
+            },
+            onDismiss = { selected = null }
+        )
+    }
 }
 
 @Composable

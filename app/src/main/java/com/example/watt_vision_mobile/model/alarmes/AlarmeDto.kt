@@ -16,5 +16,6 @@ data class AlarmeDto(
     val reconhecido_por: Long? = null,
     val data_reconhecimento: String? = null,
     val tipo_alerta: String? = null,
-    val categoria_alerta: String? = null
+    val categoria_alerta: String? = null,
+    val nome_equipamento: String? = null
 )
