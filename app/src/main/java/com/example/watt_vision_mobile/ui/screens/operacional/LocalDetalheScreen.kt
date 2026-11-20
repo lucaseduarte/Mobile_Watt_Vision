@@ -3,7 +3,6 @@ package com.example.watt_vision_mobile.ui.screens.operacional
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -19,6 +18,7 @@ import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.AlertaSever
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.components.AlarmesSecao
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.components.InfoCampo
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.components.InfoGrupoCard
+import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.components.InfoLinha
 import com.example.watt_vision_mobile.ui.screens.operacional.components.StatusBadge
 import com.example.watt_vision_mobile.ui.theme.*
 import java.util.Locale
@@ -98,52 +98,16 @@ fun LocalDetalheScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Card Resumo
             item {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = SurfaceDark,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
-                    modifier = Modifier.fillMaxWidth()
+                InfoGrupoCard(
+                    titulo = "Status Operacional",
+                    indicador = { StatusBadge(status = local.status) }
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Status Operacional",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TextMuted
-                            )
-                            StatusBadge(status = local.status)
-                        }
-
-                        HorizontalDivider(color = CardBorder, thickness = 1.dp)
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(text = "Setores Vinculados", fontSize = 10.sp, color = TextMuted)
-                                Text(text = "${local.setoresVinculados} setores", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-                            }
-                            Column {
-                                Text(text = "Equipamentos", fontSize = 10.sp, color = TextMuted)
-                                Text(text = "${local.equipamentosVinculados} unidades", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(text = "Consumo Acumulado", fontSize = 10.sp, color = TextMuted)
-                                Text(text = consumoStr, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = ToneCyanText)
-                            }
-                        }
+                    InfoLinha {
+                        InfoCampo("Setores Vinculados", "${local.setoresVinculados} setores", Modifier.weight(1f))
+                        InfoCampo("Equipamentos", "${local.equipamentosVinculados} unidades", Modifier.weight(1f))
                     }
+                    InfoCampo("Consumo Acumulado", consumoStr, corValor = ToneCyanText)
                 }
             }
 
@@ -164,8 +128,10 @@ fun LocalDetalheScreen(
             // Métricas e Responsável
             item {
                 InfoGrupoCard(titulo = "Dados Operacionais") {
-                    InfoCampo(rotulo = "Setores Registrados", valor = "${local.setoresVinculados} setores")
-                    InfoCampo(rotulo = "Total de Dispositivos", valor = "${local.equipamentosVinculados} equipamentos")
+                    InfoLinha {
+                        InfoCampo("Setores Registrados", "${local.setoresVinculados} setores", Modifier.weight(1f))
+                        InfoCampo("Total de Dispositivos", "${local.equipamentosVinculados} equipamentos", Modifier.weight(1f))
+                    }
                     InfoCampo(rotulo = "Responsável Operacional", valor = "Carlos Eduardo (Gestão)")
                 }
             }

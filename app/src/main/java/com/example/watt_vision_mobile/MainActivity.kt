@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import com.example.watt_vision_mobile.model.alarmes.AlarmeEntidade
 import com.example.watt_vision_mobile.model.alarmes.AlarmeTipoEntidade
 import com.example.watt_vision_mobile.ui.components.WattVisionBottomBar
+import com.example.watt_vision_mobile.ui.screens.conectividade.ConectividadeScreen
+import com.example.watt_vision_mobile.ui.screens.conectividade.DispositivoDetalhesScreen
 import com.example.watt_vision_mobile.ui.screens.configuracoes.ConfiguracoesScreen
 import com.example.watt_vision_mobile.ui.screens.configuracoes.ConfiguracoesViewModel
 import com.example.watt_vision_mobile.ui.screens.dashboard.DashboardScreen
@@ -35,6 +37,8 @@ import com.example.watt_vision_mobile.ui.screens.alarmes.AlarmesViewModel
 import com.example.watt_vision_mobile.ui.screens.medicoes.MedicoesScreen
 import com.example.watt_vision_mobile.ui.screens.placeholder.PlaceholderScreen
 import com.example.watt_vision_mobile.ui.theme.WattVisionTheme
+
+private const val ROTA_DETALHES_DISPOSITIVO = "Detalhes do dispositivo"
 
 class MainActivity : ComponentActivity() {
 
@@ -71,16 +75,18 @@ class MainActivity : ComponentActivity() {
                     Scaffold(
                         containerColor = MaterialTheme.colorScheme.background,
                         bottomBar = {
-                            WattVisionBottomBar(
-                                selectedRoute = selectedRoute,
-                                onRouteSelected = { route ->
-                                    selectedRoute = route
-                                    selectedEquipamentoId = null
-                                    selectedSetorItem = null
-                                    selectedLocalItem = null
-                                    entidadeDoAlarme = null
-                                }
-                            )
+                            if (selectedRoute != ROTA_DETALHES_DISPOSITIVO) {
+                                WattVisionBottomBar(
+                                    selectedRoute = selectedRoute,
+                                    onRouteSelected = { route ->
+                                        selectedRoute = route
+                                        selectedEquipamentoId = null
+                                        selectedSetorItem = null
+                                        selectedLocalItem = null
+                                        entidadeDoAlarme = null
+                                    }
+                                )
+                            }
                         }
                     ) { innerPadding ->
                         val contentModifier = Modifier.padding(innerPadding)
@@ -168,6 +174,19 @@ class MainActivity : ComponentActivity() {
                                         entidadeDoAlarme = entidade
                                         selectedRoute = "Operacional"
                                     },
+                                    modifier = contentModifier
+                                )
+                            }
+                            "Conectividade" -> routeState.SaveableStateProvider("Conectividade") {
+                                ConectividadeScreen(
+                                    onNavigate = { route -> selectedRoute = route },
+                                    onVerDetalhes = { selectedRoute = ROTA_DETALHES_DISPOSITIVO },
+                                    modifier = contentModifier
+                                )
+                            }
+                            ROTA_DETALHES_DISPOSITIVO -> {
+                                DispositivoDetalhesScreen(
+                                    onVoltar = { selectedRoute = "Conectividade" },
                                     modifier = contentModifier
                                 )
                             }

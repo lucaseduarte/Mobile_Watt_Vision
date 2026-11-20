@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -305,44 +306,56 @@ fun InfoCampo(
     rotulo: String,
     valor: String?,
     modifier: Modifier = Modifier,
-    copiavel: Boolean = false
+    copiavel: Boolean = false,
+    corValor: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(0xFFF1F5F9)
 ) {
     val context = LocalContext.current
-    val valorExibido = if (valor.isNullOrBlank()) "—" else valor
+    val texto = valor?.takeIf { it.isNotBlank() }
+    val copiar: (() -> Unit)? = if (copiavel && texto != null) {
+        {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText(rotulo, texto))
+            Toast.makeText(context, "$rotulo copiado!", Toast.LENGTH_SHORT).show()
+        }
+    } else null
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(
-                if (copiavel && !valor.isNullOrBlank()) {
-                    Modifier.combinedClickable(
-                        onClick = {},
-                        onLongClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText(rotulo, valor)
-                            clipboard.setPrimaryClip(clip)
-                            Toast.makeText(context, "$rotulo copiado!", Toast.LENGTH_SHORT).show()
-                        }
-                    )
-                } else Modifier
-            )
-            .padding(vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = rotulo, fontSize = 11.sp, color = TextMuted)
-        Text(
-            text = valorExibido,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = TextWhite
-        )
+        Column(
+            modifier = Modifier.weight(1f).then(
+                if (copiar != null) Modifier.combinedClickable(onClick = {}, onLongClick = copiar)
+                else Modifier
+            ),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(rotulo, fontSize = 11.sp, color = androidx.compose.ui.graphics.Color(0xFF8E96A4))
+            Text(texto ?: "—", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = corValor)
+        }
+        if (copiar != null) {
+            IconButton(onClick = copiar, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Outlined.ContentCopy, contentDescription = "Copiar $rotulo",
+                    modifier = Modifier.size(18.dp), tint = ToneBlueText)
+            }
+        }
     }
+}
+
+@Composable
+fun InfoLinha(conteudo: @Composable RowScope.() -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        content = conteudo
+    )
 }
 
 @Composable
 fun InfoGrupoCard(
     titulo: String,
     modifier: Modifier = Modifier,
+    indicador: @Composable () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit
 ) {
     Surface(
@@ -357,12 +370,14 @@ fun InfoGrupoCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = titulo,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextWhite
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(titulo, Modifier.weight(1f), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextWhite)
+                indicador()
+            }
             HorizontalDivider(color = CardBorder.copy(alpha = 0.6f), thickness = 1.dp)
             content()
         }

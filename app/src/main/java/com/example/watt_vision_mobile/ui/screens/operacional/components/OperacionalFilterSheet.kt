@@ -42,7 +42,15 @@ fun OperacionalFilterBar(
     onRemoveFilter: (String) -> Unit,
     locaisList: List<String>,
     setoresList: List<Pair<String, String>>, // Pair(setorNome, localNome)
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    searchPlaceholder: String = when (tabIndex) {
+        0 -> "Pesquisar equipamento ou código..."
+        1 -> "Pesquisar setor ou código..."
+        else -> "Pesquisar local ou código..."
+    },
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    statusOptions: List<String> = listOf("Todos", "Ativo", "Inativo"),
+    equipamentosPorFiltro: ((TabFilterState) -> List<String>)? = null
 ) {
     var isSheetOpen by rememberSaveable { mutableStateOf(false) }
     var draftFilters by remember { mutableStateOf(filters) }
@@ -52,16 +60,10 @@ fun OperacionalFilterBar(
         draftFilters = filters
     }
 
-    val searchPlaceholder = when (tabIndex) {
-        0 -> "Pesquisar equipamento ou código..."
-        1 -> "Pesquisar setor ou código..."
-        else -> "Pesquisar local ou código..."
-    }
-
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(contentPadding),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // Search TextField Sticky (min 48dp height)
@@ -103,7 +105,7 @@ fun OperacionalFilterBar(
         ) {
             // Chips de Status (Visíveis em todas as abas)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("Todos", "Ativo", "Inativo").forEach { statusOpt ->
+                statusOptions.forEach { statusOpt ->
                     val isSelected = filters.statusFilter.equals(statusOpt, ignoreCase = true)
                     FilterChip(
                         selected = isSelected,
@@ -176,51 +178,34 @@ fun OperacionalFilterBar(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (filters.locationFilter != "Todos") {
-                    item {
-                        InputChip(
-                            selected = true,
-                            onClick = { onRemoveFilter("location") },
-                            label = { Text("Local: ${filters.locationFilter}", fontSize = 11.sp) },
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Remover filtro Local ${filters.locationFilter}",
-                                    modifier = Modifier.size(16.dp)
+                val filtrosAtivos = listOf(
+                    Triple("location", "Local", filters.locationFilter),
+                    Triple("sector", "Setor", filters.sectorFilter),
+                    Triple("equipment", "Equipamento", filters.equipmentFilter)
+                )
+                filtrosAtivos.forEach { (chave, rotulo, valor) ->
+                    if (valor != "Todos") {
+                        item(key = chave) {
+                            InputChip(
+                                selected = true,
+                                onClick = { onRemoveFilter(chave) },
+                                label = { Text("$rotulo: $valor", fontSize = 11.sp) },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remover filtro $rotulo $valor",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                colors = InputChipDefaults.inputChipColors(
+                                    containerColor = SurfaceDark,
+                                    selectedContainerColor = SurfaceDark,
+                                    labelColor = TextWhite,
+                                    selectedLabelColor = TextWhite,
+                                    trailingIconColor = TextMuted
                                 )
-                            },
-                            colors = InputChipDefaults.inputChipColors(
-                                containerColor = SurfaceDark,
-                                selectedContainerColor = SurfaceDark,
-                                labelColor = TextWhite,
-                                selectedLabelColor = TextWhite,
-                                trailingIconColor = TextMuted
                             )
-                        )
-                    }
-                }
-
-                if (filters.sectorFilter != "Todos") {
-                    item {
-                        InputChip(
-                            selected = true,
-                            onClick = { onRemoveFilter("sector") },
-                            label = { Text("Setor: ${filters.sectorFilter}", fontSize = 11.sp) },
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Remover filtro Setor ${filters.sectorFilter}",
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            },
-                            colors = InputChipDefaults.inputChipColors(
-                                containerColor = SurfaceDark,
-                                selectedContainerColor = SurfaceDark,
-                                labelColor = TextWhite,
-                                selectedLabelColor = TextWhite,
-                                trailingIconColor = TextMuted
-                            )
-                        )
+                        }
                     }
                 }
             }
@@ -282,6 +267,16 @@ fun OperacionalFilterBar(
                                 label = "Setor",
                                 valorAtual = draftFilters.sectorFilter,
                                 onClick = { activeSelectorType = OperacionalSelectorType.SETOR }
+                            )
+                        }
+                    }
+                    if (equipamentosPorFiltro != null) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(text = "Equipamento vinculado", fontSize = 12.sp, color = TextSubtle)
+                            FiltroLinhaSeletor(
+                                label = "Equipamento",
+                                valorAtual = draftFilters.equipmentFilter,
+                                onClick = { activeSelectorType = OperacionalSelectorType.EQUIPAMENTO }
                             )
                         }
                     }
@@ -351,11 +346,17 @@ fun OperacionalFilterBar(
                 list.addAll(filteredSetores)
                 "Setor" to list
             }
+            OperacionalSelectorType.EQUIPAMENTO -> {
+                val equipamentos = equipamentosPorFiltro?.invoke(draftFilters).orEmpty()
+                "Equipamento" to (listOf(FiltroItemModel("Todos", "Todos")) +
+                    equipamentos.map { FiltroItemModel(it, it) })
+            }
         }
 
         val selectedVal = when (selector) {
             OperacionalSelectorType.LOCAL -> draftFilters.locationFilter
             OperacionalSelectorType.SETOR -> draftFilters.sectorFilter
+            OperacionalSelectorType.EQUIPAMENTO -> draftFilters.equipmentFilter
         }
 
         FiltroSeletorBusca(
@@ -379,6 +380,7 @@ fun OperacionalFilterBar(
                             equipmentFilter = "Todos"
                         )
                     }
+                    OperacionalSelectorType.EQUIPAMENTO -> draftFilters.copy(equipmentFilter = selectedTitle)
                 }
                 activeSelectorType = null
             },
@@ -388,5 +390,5 @@ fun OperacionalFilterBar(
 }
 
 enum class OperacionalSelectorType {
-    LOCAL, SETOR
+    LOCAL, SETOR, EQUIPAMENTO
 }

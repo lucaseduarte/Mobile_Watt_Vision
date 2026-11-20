@@ -242,8 +242,10 @@ fun EquipamentoDetalheScreen(
                                     InfoGrupoCard(titulo = "Identificação") {
                                         InfoCampo(rotulo = "Nome do Equipamento", valor = data.nome)
                                         InfoCampo(rotulo = "Identificação / Código", valor = data.codigo, copiavel = true)
-                                        InfoCampo(rotulo = "Fabricante", valor = data.fabricante)
-                                        InfoCampo(rotulo = "Modelo", valor = data.modelo)
+                                        InfoLinha {
+                                            InfoCampo("Fabricante", data.fabricante, Modifier.weight(1f))
+                                            InfoCampo("Modelo", data.modelo, Modifier.weight(1f))
+                                        }
                                         InfoCampo(rotulo = "Número de Série", valor = data.numeroSerie, copiavel = true)
                                     }
                                 }
@@ -253,12 +255,14 @@ fun EquipamentoDetalheScreen(
                                     InfoGrupoCard(titulo = "Especificações") {
                                         InfoCampo(rotulo = "Tipo de Equipamento", valor = data.tipo)
                                         val tensaoFormated = data.tensaoNominalV?.let { "${it.toInt()} V" } ?: "—"
-                                        InfoCampo(rotulo = "Tensão Nominal (V)", valor = tensaoFormated)
                                         val dataFormated = if (!data.dataInstalacao.isNullOrBlank() && data.dataInstalacao.contains("-")) {
                                             val parts = data.dataInstalacao.split("-")
                                             if (parts.size == 3) "${parts[2]}/${parts[1]}/${parts[0]}" else data.dataInstalacao
                                         } else "—"
-                                        InfoCampo(rotulo = "Data de Instalação", valor = dataFormated)
+                                        InfoLinha {
+                                            InfoCampo("Tensão Nominal (V)", tensaoFormated, Modifier.weight(1f))
+                                            InfoCampo("Data de Instalação", dataFormated, Modifier.weight(1f))
+                                        }
                                     }
                                 }
 
