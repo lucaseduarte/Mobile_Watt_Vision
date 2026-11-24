@@ -10,7 +10,7 @@
 Em uma pasta nova, clone a revisão Android de entrega depois de ela ser publicada. Clone também o Backend e fixe o commit ensaiado:
 
 ```powershell
-$wvRefAndroid = 'substitua-pela-branch-ou-tag-de-entrega'
+$wvRefAndroid = 'teste-prototipo'
 git clone --branch $wvRefAndroid https://github.com/lucaseduarte/Mobile_Watt_Vision.git Mobile_Watt_Vision
 git clone https://github.com/DiegodelPadua/beck-end_wattVision.git back-end_wattVision
 git -C back-end_wattVision switch --detach 2be8c5193bb4d808e75436377d77f01faa0e0e51
@@ -23,7 +23,7 @@ Reserve conexão para baixar o SDK, a imagem do AVD e as dependências. O Androi
 
 ## MySQL descartável e conta de demonstração
 
-1. Inicie apenas o serviço MySQL da instância descartável pelo painel **Serviços** do Windows. Confirme no cliente MySQL a instância, a porta e o diretório de dados antes de importar. Use `127.0.0.1:3306` somente se essa porta for da instância descartável. Confirme o relógio do banco com `SELECT NOW(), @@session.time_zone, TIMEDIFF(NOW(), UTC_TIMESTAMP());`. O app interpreta os horários da série em `America/Sao_Paulo` (UTC−03:00 no ensaio). Com outra porta local, substitua `3306` nestas instruções e no `.env`.
+1. Inicie apenas o serviço MySQL da instância descartável pelo painel **Serviços** do Windows. Confirme no cliente MySQL a instância, a porta e o diretório de dados antes de importar. Use `127.0.0.1:3306` somente se essa porta for da instância descartável. Confirme o relógio do banco com `SELECT NOW(), @@session.time_zone, TIMEDIFF(NOW(), UTC_TIMESTAMP());`. O app interpreta os horários da série em `America/Sao_Paulo` (UTC−03:00 no ensaio). Com outra porta local, substitua `3306` nestas instruções e em `DB_PORT`.
 2. Importe [scripts/tcc-demonstracao.sql](scripts/tcc-demonstracao.sql) por um cliente MySQL em modo lote **sem `--force`**. O script cria `db_watt_vision` e falha se esse nome já existir. Ele inclui apenas o esquema de tabelas e uma massa sintética para o TCC, com PZEM 1 e quatro leituras próximas da hora da importação. O script original com `DROP DATABASE`, contas e material de autenticação fica fora desse procedimento.
 3. Exemplo com o cliente MySQL no PATH e um perfil administrativo local. O comando de configuração pede a senha no terminal e guarda o perfil no armazenamento local do cliente. Substitua o usuário e a porta conforme sua instância:
 
@@ -57,43 +57,60 @@ Reserve conexão para baixar o SDK, a imagem do AVD e as dependências. O Androi
 
 ## Backend e rede
 
-Crie o `.env` privado na raiz do Backend a partir de `.env.example`. Use estes valores de referência e preencha os segredos localmente:
+Exporte as variáveis abaixo no processo que vai iniciar o Backend. Use os valores de referência e preencha os segredos localmente. O lançador exige que o Node receba as configurações da base descartável pelo ambiente.
 
 | Variável | Configuração do ensaio |
 |---|---|
-| `PORT` | `3000` |
 | `DB_HOST`, `DB_PORT`, `DB_NAME` | `127.0.0.1`, `3306` ou porta descartável escolhida, `db_watt_vision` |
 | `DB_USER`, `DB_PASSWORD` | Conta de serviço local com as permissões acima |
 | `JWT_SECRET`, `JWT_EXPIRES_IN` | Segredo aleatório exclusivo com pelo menos 32 caracteres e validade `8h` |
 | `DEMO_MODE` | `false` |
-| `MQTT_BROKER_URL`, `MQTT_TOPIC_MEDICOES` | Broker isolado autorizado, ou `mqtt://127.0.0.1:1` e tópico `watt-tcc-isolado` para ensaiar apenas os dados importados. A conexão MQTT poderá registrar recusas e novas tentativas nesse segundo caso. |
 
-O Node abre a porta em endereço geral nesta revisão. Antes de iniciá-lo, confirme que a política de rede aprovada bloqueia a entrada da LAN nas portas 3000 e MySQL, preservando o acesso local e o caminho do AVD. O emulador usa `10.0.2.2:3000` para chegar ao host. Só o Backend se conecta ao MySQL.
+Na raiz do Android, execute o lançador local com o caminho da cópia do Backend no commit validado:
 
-Com o MySQL da apresentação já ativo, rode `npm.cmd start` na raiz do Backend. Confirme que `http://localhost:3000/` responde com o serviço Watt Vision.
+```powershell
+$env:DB_HOST = '127.0.0.1'
+$env:DB_PORT = Read-Host 'Porta da instância MySQL descartável'
+$env:DB_NAME = 'db_watt_vision'
+$env:DB_USER = Read-Host 'Conta de serviço MySQL'
+$wvSenhaServico = Read-Host 'Senha da conta de serviço' -AsSecureString
+$env:DB_PASSWORD = [pscredential]::new($env:DB_USER, $wvSenhaServico).GetNetworkCredential().Password
+Remove-Variable wvSenhaServico
+$env:JWT_SECRET = node -p "require('node:crypto').randomBytes(32).toString('hex')"
+$env:JWT_EXPIRES_IN = '8h'
+$env:DEMO_MODE = 'false'
+$env:TZ = 'America/Sao_Paulo'
+try {
+    node .\scripts\tcc-backend-local.mjs ..\back-end_wattVision
+} finally {
+    Remove-Item Env:DB_PASSWORD, Env:JWT_SECRET
+}
+```
+
+O lançador usa os controllers do Backend validado, escuta em `127.0.0.1:13000` e verifica a identificação da base sintética e do operador. Ele exige JWT para as consultas de negócio e restringe o acesso às rotas de leitura que o aplicativo usa. Confirme que o MySQL também escuta apenas em loopback e que a porta MySQL corresponde ao diretório descartável. O lançador dispensa um broker MQTT. Confirme a resposta de `http://127.0.0.1:13000/` no host.
 
 ## Android e roteiro de apresentação
 
-1. Abra a raiz Android no Android Studio, sincronize e escolha **Debug** no AVD. O Release exige HTTPS autorizado e fica fora deste roteiro.
-2. Configure a URL Debug local para autenticação. Use a opção local do Gradle indicada abaixo ou o arquivo **pessoal** de propriedades Gradle. Mantenha a série real desabilitada na primeira execução.
-3. Compile e instale. Em PowerShell na raiz do Android, com JDK/SDK selecionados e AVD ativo:
+1. Abra a raiz Android no Android Studio, sincronize e escolha **Debug** no AVD. O Release continua exigindo HTTPS.
+2. Confirme o isolamento da rede e encaminhe a porta local do Backend pelo ADB:
 
    ```powershell
-   .\gradlew.bat :app:installDebug -PwattVisionDebugApiUrl=http://10.0.2.2:3000/ -PwattVisionDebugLocalSeries=false
+   adb reverse tcp:13000 tcp:13000
+   .\gradlew.bat :app:installDebug -PwattVisionDebugApiUrl=http://127.0.0.1:13000/ -PwattVisionDebugLocalSeries=true
    ```
 
-4. Abra o aplicativo, entre com a conta autorizada e use **Ver demonstração do gráfico** no Dashboard. Navegue para Medições, Alarmes, Conectividade, Operacional e Relatórios. Use os controles de demonstração quando disponíveis e mantenha visíveis os rótulos de dados simulados. Gere um PDF de teste em Relatórios antes da apresentação. O modo demonstrativo usa dados locais após a autenticação; uma instalação limpa precisa do Backend para entrar.
-5. **Consulta real opcional.** Depois de confirmar isolamento, sessão e autorização, reinstale Debug trocando apenas `wattVisionDebugLocalSeries` para `true` no comando acima. No Dashboard, selecione **Dados reais do Backend**, escolha 6, 24, 48 ou 168 horas e toque em **Atualizar**. Somente o GET da série do PZEM 1 é liberado. A origem é exatamente `http://10.0.2.2:3000/`. Uma resposta dessa base está rotulada pelo app como proveniente do Backend; explique na apresentação que o banco contém **leituras sintéticas**. Com as quatro linhas ainda na janela, a última mostra 221,10 V, 2,10 kW e 15,400 kWh no contador. Medições reaproveita a mesma consulta. Volte ao modo demonstrativo, encerre a sessão e reinstale com a flag `false` após o ensaio.
+3. Entre com a conta autorizada. Confira Dashboard, Medições, Alarmes, Conectividade, Operacional e Relatórios. Use **Hoje** para comparar com a massa recém-importada. Em Relatórios, gere e abra um PDF de teste. Os registros são sintéticos e a origem é o MySQL.
+4. Para a base recém-importada, a última leitura contém 221,10 V, 2,10 kW e 15,400 kWh no contador. O status de Conectividade é o valor persistido. A falta de leitura recente não altera esse status.
+5. Encerre a sessão e pare os serviços de ensaio. Remova o encaminhamento com `adb reverse --remove tcp:13000`. Consultas de negócio ficam desabilitadas em builds sem a flag explícita.
 
 ## Diagnóstico rápido
 
 | Sintoma | Verificação |
 |---|---|
 | Gradle falha antes de compilar | Conferir JDK 25, SDK API 37, configuração Gradle JDK no IDE e rede para o primeiro download. |
-| APK abre no login e não conecta | Conferir Backend em `localhost:3000`, URL Debug `10.0.2.2:3000` e AVD. A URL LAN do host fica fora da política da série. |
+| APK abre no login e não conecta | Confira o Backend em `127.0.0.1:13000`, a URL do Debug, o AVD selecionado e `adb reverse --list`. |
 | Login retorna 500 | Conferir banco selecionado, segredo JWT e permissão de atualizar `tbl_usuario.ultimo_acesso`. |
 | Login retorna 401 ou 403 | Conferir conta, senha e status com o responsável pelo ensaio. Evitar registrar os valores em relatórios. |
-| A interface real não aparece | Conferir variante Debug, flag explícita, URL exata e sessão validada. |
-| Série vazia | Conferir a janela relativa ao relógio do MySQL e a idade da importação. Use a demonstração identificada ou prepare nova instância descartável para outro ensaio. |
-| MQTT registra conexão recusada | É esperado quando foi escolhido o destino local sem broker. Confira separadamente a rota raiz e o login. |
-| PDF indisponível | Confira se o asset acompanhado das licenças está versionado e se o relatório de demonstração permite exportar na seleção atual. |
+| As consultas estão suspensas | Confira variante Debug, flag explícita, a URL exata e a sessão validada. |
+| Série vazia | Conferir a janela relativa ao relógio do MySQL e a idade da importação. Ajuste o período ou prepare nova instância descartável para outro ensaio. |
+| PDF indisponível | Confira se o asset acompanhado das licenças está versionado e se o relatório permite exportar na seleção atual. |

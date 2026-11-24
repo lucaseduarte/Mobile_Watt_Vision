@@ -163,7 +163,7 @@ private fun TarifaFiltro(estado: RelatoriosUiState, periodo: PeriodoRelatorio) {
     if (expandida) {
         Text(
             buildAnnotatedString {
-                append("O custo da demonstração usa os deltas válidos do contador e uma tarifa de exemplo. O recorte considera ")
+                append("O consumo usa os deltas válidos do contador. O recorte considera ")
                 withStyle(SpanStyle(color = TextWhite, fontWeight = FontWeight.SemiBold)) {
                     append(periodo.titulo.lowercase(ptRelatorio))
                 }

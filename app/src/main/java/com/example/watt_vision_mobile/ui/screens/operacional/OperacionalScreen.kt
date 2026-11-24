@@ -56,7 +56,7 @@ fun OperacionalScreen(
         topBar = {
             WattVisionScreenHeader(
                 title = "Operacional",
-                subtitle = "Dados simulados"
+                subtitle = "Cadastro do Backend"
             ) {
                 WattVisionHeaderShortcut(Icons.Filled.Notifications, "Alarmes recentes") { onNavigate("Alarmes") }
                 Spacer(Modifier.width(8.dp))

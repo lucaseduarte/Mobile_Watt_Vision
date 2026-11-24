@@ -4,7 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import com.example.watt_vision_mobile.data.repository.MockOperacionalRepository
+import com.example.watt_vision_mobile.data.api.ApiClient
+import com.example.watt_vision_mobile.data.api.ChartCatalogApiService
+import com.example.watt_vision_mobile.data.repository.RetrofitOperacionalRepository
 import com.example.watt_vision_mobile.data.repository.OperacionalRepository
 import com.example.watt_vision_mobile.util.StringNormalization
 import kotlinx.coroutines.CancellationException
@@ -23,7 +25,7 @@ class OperacionalViewModel internal constructor(
 ) : AndroidViewModel(application) {
 
     constructor(application: Application, savedStateHandle: SavedStateHandle) :
-        this(application, savedStateHandle, MockOperacionalRepository())
+        this(application, savedStateHandle, RetrofitOperacionalRepository(ApiClient.createService<ChartCatalogApiService>(application)))
 
     private var loadJob: Job? = null
 

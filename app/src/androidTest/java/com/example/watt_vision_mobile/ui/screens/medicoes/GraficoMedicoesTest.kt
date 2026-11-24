@@ -140,17 +140,12 @@ class GraficoMedicoesTest {
         }
     }
 
-    @Test fun demonstracaoSoEntraAposToqueEPodeSerDesativada() {
-        val aviso = "Demonstração · Dados simulados"
+    @Test fun telaDeMedicoesNaoOfereceFonteDemonstrativa() {
         abrir { MedicoesScreen(onNavigate = {}) }.use {
-            val botao = limites(encontrar("Demonstração"))
-            assertNull(procurar(instrumentacao.uiAutomation.rootInActiveWindow, aviso, false))
-            gesto(botao.centerX(), botao.centerY())
-            encontrar(aviso)
-            val sair = limites(encontrar("Sair da demonstração"))
-            gesto(sair.centerX(), sair.centerY())
-            encontrar("Demonstração")
-            assertNull(procurar(instrumentacao.uiAutomation.rootInActiveWindow, aviso, false))
+            encontrar("Medições")
+            val raiz = instrumentacao.uiAutomation.rootInActiveWindow
+            assertNull(procurar(raiz, "Demonstração", false))
+            assertNull(procurar(raiz, "Demonstração · Dados simulados", false))
         }
     }
 

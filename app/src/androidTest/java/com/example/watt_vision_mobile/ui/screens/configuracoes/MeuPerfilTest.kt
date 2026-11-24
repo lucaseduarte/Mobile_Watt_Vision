@@ -16,12 +16,11 @@ class MeuPerfilTest {
     private val instrumentacao = InstrumentationRegistry.getInstrumentation()
 
     @Test
-    fun somenteContaAtualAbrePerfilMesmoComIdIgualAoDeOutroUsuario() {
+    fun somenteContaAtualApareceEAbrePerfil() {
         val conta = UsuarioDto(1, 1, "Conta de teste", "conta@example.invalid", "Gestor", "Ativo")
         abrir(conta).use {
             clicar("Usuários")
-            val outroUsuario = encontrar("Gabriel Santos")
-            assertFalse(gerarAncestrais(outroUsuario).any { no -> no.isClickable })
+            assertFalse(procurar("Gabriel Santos") != null)
 
             clicar("Minha conta")
             encontrar("CONTA ATUAL")
@@ -30,6 +29,10 @@ class MeuPerfilTest {
             encontrar("Senha atual")
             clicar("Cancelar alteração de senha")
             encontrar("Alterar senha")
+            val prazo = SystemClock.uptimeMillis() + 5_000
+            while (procurar("Senha atual") != null && SystemClock.uptimeMillis() < prazo) {
+                SystemClock.sleep(40)
+            }
             assertFalse(procurar("Senha atual") != null)
         }
     }
@@ -44,16 +47,12 @@ class MeuPerfilTest {
     }
 
     @Test
-    fun demonstracaoAbrePerfilFicticioSomenteDepoisDeAtivarETocarNoCard() {
+    fun semSessaoNaoOferecePerfilDemonstrativo() {
         abrir(null).use {
             clicar("Usuários")
+            encontrar("Meu perfil requer uma sessão autenticada.")
+            assertFalse(procurar("Ver demonstração de Meu perfil") != null)
             assertFalse(procurar("Minha conta") != null)
-            clicar("Ver demonstração de Meu perfil")
-            assertFalse(procurar("CONTA ATUAL") != null)
-            clicar("Minha conta")
-            encontrar("CONTA ATUAL")
-            encontrar("DEBUG · DADOS SIMULADOS")
-            encontrar("perfil@example.invalid")
         }
     }
 

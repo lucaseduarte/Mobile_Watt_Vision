@@ -133,3 +133,19 @@ internal class ConectividadeViewModel(
         super.onCleared()
     }
 }
+
+internal fun fonteConectividadeBackend(contexto: android.content.Context): FonteConectividade {
+    val api = com.example.watt_vision_mobile.data.api.ApiClient
+        .createService<com.example.watt_vision_mobile.data.api.WattVisionApiService>(contexto)
+    return FonteConectividade {
+        val resposta = api.getDispositivos()
+        if (!resposta.isSuccessful) throw retrofit2.HttpException(resposta)
+        val dispositivos = requireNotNull(resposta.body()?.takeIf { it.sucesso }?.dados)
+        ConectividadeUiState(dispositivos = dispositivos.map { dto ->
+            DispositivoConectividade(
+                DispositivoIoTDto(dto.id, dto.identificador, dto.nome, dto.status,
+                    dto.data_comunicacao, dto.modelo, mqtt = null)
+            )
+        })
+    }
+}

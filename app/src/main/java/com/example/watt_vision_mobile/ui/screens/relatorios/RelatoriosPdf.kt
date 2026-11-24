@@ -36,7 +36,7 @@ private fun entradaPdf(documento: RelatorioDocumento): String {
     val nomes = metricas.map { it.titulo }
     return JSONObject().apply {
         put("demonstracao", estado.demonstracao)
-        put("custoKwh", estado.tarifa)
+        put("custoKwh", if (estado.demonstracao) estado.tarifa else JSONObject.NULL)
         put("grandezas", JSONArray(filtros.grandeza?.let { listOf(it.titulo) } ?: nomes))
         put("filtros", JSONObject().apply {
             val cobertura = documento.relatorio.cobertura.titulo
@@ -73,7 +73,7 @@ private fun entradaPdf(documento: RelatorioDocumento): String {
 }
 
 internal suspend fun gerarRelatorioPdf(contexto: Context, documento: RelatorioDocumento): PdfRelatorio {
-    require(documento.estado.demonstracao && documento.relatorio.podeExportar)
+    require(documento.relatorio.podeExportar)
     val (codigo, entrada) = withContext(Dispatchers.IO) {
         val compactado = contexto.assets.open("relatorios/desktop-pdf.js.gz.base64").bufferedReader().use { it.readText() }
         val codigo = GZIPInputStream(Base64.decode(compactado, Base64.DEFAULT).inputStream())
@@ -106,7 +106,20 @@ private suspend fun executarGeradorPdf(contexto: Context, codigo: String, entrad
                             (() => {
                               try {
                                 $codigo
-                                return JSON.stringify(globalThis.gerarRelatorioWattVision($entrada));
+                                const entrada = $entrada;
+                                 const formatar = Number.prototype.toLocaleString;
+                                 if (entrada.custoKwh === null) {
+                                   entrada.custoKwh = NaN;
+                                   Number.prototype.toLocaleString = function (...args) {
+                                     if (Number.isNaN(Number(this))) return "indisponível";
+                                     return formatar.apply(this, args);
+                                   };
+                                 }
+                                 try {
+                                   return JSON.stringify(globalThis.gerarRelatorioWattVision(entrada));
+                                 } finally {
+                                   Number.prototype.toLocaleString = formatar;
+                                 }
                               } catch (erro) {
                                 return JSON.stringify({ erro: String(erro) });
                               }

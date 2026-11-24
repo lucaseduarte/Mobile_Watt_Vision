@@ -30,7 +30,7 @@ private fun custoRelatorio(energia: Double, tarifa: BigDecimal) = BigDecimal.val
 internal fun montarRelatorio(
     fonte: FonteRelatorio,
     filtros: FiltrosRelatorio,
-    tarifa: BigDecimal,
+    tarifa: BigDecimal?,
     agora: ZonedDateTime
 ): Relatorio {
     val janelaBase = janelaMedicoes(filtros.periodo.titulo, agora)
@@ -69,10 +69,10 @@ internal fun montarRelatorio(
                 inconsistencias = true
                 null
             } else {
-                atual.instante.atZone(agora.zone).toLocalDate() to (depois - antes)
+                atual.instante.atZone(agora.zone).toLocalDate() to (BigDecimal.valueOf(depois) - BigDecimal.valueOf(antes))
             }
         }.filterNotNull()
-    }.groupingBy { it.first }.fold(0.0) { total, (_, delta) -> total + delta }
+    }.groupingBy { it.first }.fold(BigDecimal.ZERO) { total, (_, delta) -> total + delta }
     val esperados = fonte.medidores.filterValues { noEscopo(it.localId, it.setorId, it.id) }.keys
     val chavesConhecidas = cadencia != null && esperados.isNotEmpty()
     val gradeCompleta = chavesConhecidas && porMedidor.keys == esperados &&
@@ -85,13 +85,13 @@ internal fun montarRelatorio(
     }
     val dias = leituras.groupBy { it.instante.atZone(agora.zone).toLocalDate() }.map { (dia, registros) ->
         val valores = buildMap {
-            consumoPorDia[dia]?.let { put(energia, it) }
+            consumoPorDia[dia]?.let { put(energia, it.toDouble()) }
             GrandezaRelatorio.entries.filter { it != energia }.forEach { grandeza ->
                 val amostras = registros.mapNotNull { it.valores[grandeza]?.takeIf(Double::isFinite) }
                 if (amostras.isNotEmpty()) put(grandeza, amostras.average())
             }
         }
-        DiaRelatorio(dia, registros.size, valores, valores[energia]?.let { custoRelatorio(it, tarifa) })
+        DiaRelatorio(dia, registros.size, valores, tarifa?.let { taxa -> valores[energia]?.let { custoRelatorio(it, taxa) } })
     }.asReversed()
     val amostra = if (leituras.size <= 120) leituras else List(120) { indice ->
         leituras[(indice * (leituras.lastIndex / 119.0)).roundToInt()]
@@ -103,11 +103,11 @@ internal fun montarRelatorio(
         }
         SerieRelatorio(pontos, leituras.count { it.valores[grandeza]?.let { v -> v.isFinite() && (grandeza != energia || v >= 0) } == true })
     }
-    val consumo = consumoPorDia.values.takeIf { it.isNotEmpty() }?.sum()
+    val consumo = consumoPorDia.values.takeIf { it.isNotEmpty() }?.fold(BigDecimal.ZERO, BigDecimal::add)?.toDouble()
     return Relatorio(
         leituras.size, amostra.size, series, dias, consumo,
-        consumo?.div(consumoPorDia.size), consumoPorDia.values.maxOrNull(),
-        consumo?.let { custoRelatorio(it, tarifa) }, agora.zone, leituras,
+        consumo?.div(consumoPorDia.size), consumoPorDia.values.maxOrNull()?.toDouble(),
+        tarifa?.let { taxa -> consumo?.let { custoRelatorio(it, taxa) } }, agora.zone, leituras,
         cobertura, fonte.limiteAtingido, inconsistencias
     )
 }

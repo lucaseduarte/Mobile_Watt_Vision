@@ -82,7 +82,7 @@ fun LocalDetalheScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "${local.codigo}  ·  Unidade Operacional  ·  Dados simulados",
+                            text = "${local.codigo}  ·  Unidade Operacional  ·  Cadastro do Backend",
                             fontSize = 11.sp,
                             color = TextMuted,
                             maxLines = 1,

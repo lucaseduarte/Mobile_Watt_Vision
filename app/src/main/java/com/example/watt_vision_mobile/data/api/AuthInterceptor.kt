@@ -28,7 +28,7 @@ internal class AuthInterceptor(
 
             // Login e restauração validam um candidato explícito antes de promovê-lo à sessão.
             if (request.header("Authorization") != null) return chain.proceed(request)
-        } else if (!permiteSerieLocal(request)) {
+        } else if (!permiteConsultaLocal(request)) {
             throw IOException("Consultas de negócio estão suspensas nesta entrega.")
         }
 
@@ -40,19 +40,48 @@ internal class AuthInterceptor(
         return response
     }
 
-    private fun permiteSerieLocal(request: Request): Boolean {
-        if (!BuildConfig.DEBUG || !localSeriesEnabled) return false
-
-        val method = request.tag(Invocation::class.java)?.method()
+    private fun permiteConsultaLocal(request: Request): Boolean {
+        if (!BuildConfig.DEBUG || !localSeriesEnabled || request.method != "GET") return false
         val url = request.url
-        return method?.declaringClass == WattVisionApiService::class.java &&
-            method.name == "getSerieTemporal" &&
-            request.method == "GET" &&
-            url.scheme == "http" && url.host == "10.0.2.2" && url.port == 3000 &&
-            url.username.isEmpty() && url.password.isEmpty() && url.fragment == null &&
-            url.encodedPath == "/api/medicoes/serie-temporal" &&
-            url.querySize == 2 && url.queryParameterNames == setOf("id_pzem", "horas") &&
-            url.queryParameter("id_pzem") == "1" &&
-            url.queryParameter("horas") in setOf("6", "24", "48", "168")
+        if (url.scheme != "http" || url.host != "127.0.0.1" || url.port != 13000 ||
+            url.username.isNotEmpty() || url.password.isNotEmpty() || url.fragment != null) return false
+
+        val method = request.tag(Invocation::class.java)?.method() ?: return false
+        return when (method.declaringClass) {
+            WattVisionApiService::class.java -> when (method.name) {
+                "getSerieTemporal" -> url.encodedPath == "/api/medicoes/serie-temporal" &&
+                    url.querySize == 2 && url.queryParameterNames == setOf("id_pzem", "horas") &&
+                    (url.queryParameter("id_pzem")?.toIntOrNull() ?: 0) > 0 &&
+                    url.queryParameter("horas")?.toIntOrNull() in 1..720
+                "getEquipamento" -> url.querySize == 0 && equipamento.matches(url.encodedPath)
+                "getDispositivos" -> url.querySize == 0 && url.encodedPath == "/api/dispositivos-iot"
+                else -> false
+            }
+            ChartCatalogApiService::class.java -> url.querySize == 0 && url.encodedPath == catalogo[method.name]
+            AlarmesApiService::class.java -> url.querySize == 0 &&
+                when (method.name) {
+                    "listar" -> url.encodedPath == "/api/alertas"
+                    "pontos" -> url.encodedPath == "/api/pontos-medicao"
+                    "limite" -> limite.matches(url.encodedPath)
+                    else -> false
+                }
+            else -> false
+        }
+    }
+
+    private companion object {
+        val catalogo = mapOf(
+            "locais" to "/api/locais",
+            "setores" to "/api/setores",
+            "equipamentos" to "/api/equipamentos",
+            "pontos" to "/api/pontos-medicao",
+            "sensores" to "/api/pzems"
+        )
+        val equipamento = Regex("/api/equipamentos/[1-9][0-9]*")
+        val limite = Regex("/api/limites/[1-9][0-9]*")
     }
 }
+
+internal val integracaoLocal: Boolean
+    get() = BuildConfig.DEBUG && BuildConfig.LOCAL_SERIES_ENABLED &&
+        BuildConfig.API_BASE_URL == "http://127.0.0.1:13000/"

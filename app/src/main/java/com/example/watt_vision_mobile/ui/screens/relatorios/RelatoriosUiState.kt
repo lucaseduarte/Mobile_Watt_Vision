@@ -58,7 +58,7 @@ internal data class FonteRelatorio(
 }
 
 internal enum class CoberturaRelatorio(val titulo: String) {
-    COMPROVADA("Cobertura comprovada na série simulada"),
+    COMPROVADA("Cobertura comprovada"),
     PARCIAL("Cobertura parcial"),
     INDETERMINADA("Cobertura indeterminada"),
     SEM_DADOS("Sem dados")

@@ -8,7 +8,6 @@ import com.example.watt_vision_mobile.data.api.WattVisionApiService
 import com.example.watt_vision_mobile.data.repository.EquipamentoCadastroRepository
 import com.example.watt_vision_mobile.data.repository.EquipamentoDetalheRepository
 import com.example.watt_vision_mobile.model.alarmes.AlarmeEntidade
-import com.example.watt_vision_mobile.data.repository.MockEquipamentoDetalheRepository
 import com.example.watt_vision_mobile.ui.screens.operacional.EquipamentoItem
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
@@ -29,10 +28,13 @@ class EquipamentoDetalheViewModel(
     application: Application
 ) : AndroidViewModel(application) {
 
-    private val repository: EquipamentoDetalheRepository = MockEquipamentoDetalheRepository()
-
     private val cadastroRepository by lazy {
         EquipamentoCadastroRepository(ApiClient.createService<WattVisionApiService>(application))
+    }
+
+    private val repository = object : EquipamentoDetalheRepository {
+        override suspend fun getDetalheEquipamento(equipamento: EquipamentoItem) =
+            cadastroRepository.carregarEquipamento(equipamento)
     }
 
     suspend fun carregarCadastro(entidade: AlarmeEntidade) = cadastroRepository.carregar(entidade)

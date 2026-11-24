@@ -89,7 +89,7 @@ fun SetorDetalheScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "${setor.codigo}  ·  Local: ${setor.localNome}  ·  Dados simulados",
+                            text = "${setor.codigo}  ·  Local: ${setor.localNome}  ·  Cadastro do Backend",
                             fontSize = 11.sp,
                             color = TextMuted,
                             maxLines = 1,

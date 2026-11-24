@@ -123,7 +123,7 @@ private fun ResumoDispositivo(dispositivo: DispositivoConectividade) {
             SeloDetalhes("● ${dispositivo.status}", fundo, cor)
         }
         Text(dispositivo.nome, fontSize = 14.sp, color = TextSubtle)
-        Text("Dados simulados", fontSize = 12.sp, color = ToneBlueText)
+        Text("Cadastro do Backend", fontSize = 12.sp, color = ToneBlueText)
         Text(listOf(dispositivo.setor, dispositivo.local).filter { it.isNotBlank() }.joinToString(" / ").ifEmpty { "—" },
             fontSize = 12.sp, color = TextSubtle)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -230,7 +230,7 @@ private fun HistoricoDetalhes(eventos: List<EventoConectividade>, modifier: Modi
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item { TituloSecao("Histórico de Conexão e Eventos") }
-        if (eventos.isEmpty()) item { Text("Nenhum evento disponível.", color = TextSubtle) }
+        if (eventos.isEmpty()) item { Text("O histórico de eventos não está disponível no Backend.", color = TextSubtle) }
         items(eventos, key = { it.id }) { evento ->
             val reconectado = evento.evento == "Reconectado"
             CardDetalhes {

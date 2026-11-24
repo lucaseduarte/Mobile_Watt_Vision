@@ -62,7 +62,7 @@ class DashboardAtualizacaoTest {
         val estado = vm.aguardar(ChartStatus.READY)
         assertEquals(220.0, estado.chartPoints.single().valor)
         assertTrue(estado.summaryCards.single { it.label == "Tensão Atual" }.value.startsWith("220"))
-        assertEquals("—", estado.summaryCards.single { it.label == "Dispositivos Ativos" }.value)
+        assertEquals("—", estado.summaryCards.single { it.label == "Corrente" }.value)
         assertTrue(pedidos.tryReceive().isFailure)
     }
 

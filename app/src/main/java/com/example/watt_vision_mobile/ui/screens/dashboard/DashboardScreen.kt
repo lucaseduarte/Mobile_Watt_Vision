@@ -16,8 +16,7 @@ import com.example.watt_vision_mobile.ui.screens.dashboard.components.*
 fun DashboardScreen(
     viewModel: DashboardViewModel,
     onNavigate: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    modoCompartilhado: Boolean = false
+    modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -52,34 +51,14 @@ fun DashboardScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 2. Botão de Composição do Cálculo (Σ Ver Composição) e Modal
-                CalculoButtonAndModal(
-                    composicaoItems = uiState.composicaoItems,
-                    isOpen = uiState.isComposicaoModalOpen,
-                    onOpenModal = { viewModel.setComposicaoModalVisible(true) },
-                    onCloseModal = { viewModel.setComposicaoModalVisible(false) }
-                )
-
                 // 3. Cards de Resumo (StatCards em grid 2 colunas para mobile)
                 StatCardsSection(cards = uiState.summaryCards)
 
                 // 4. Gráfico "Desempenho do Sistema"
-                if (modoCompartilhado) {
-                    SystemPerformanceChart(
-                        uiState.chartPoints, uiState.filters.metric.key, uiState.selectedChartPeriod,
-                        viewModel::onMetricSelected, viewModel::onChartPeriodSelected, uiState.chart,
-                        viewModel::retryChart
-                    )
-                } else DashboardChart(
-                    points = uiState.chartPoints,
-                    selectedMetric = uiState.filters.metric.key,
-                    selectedPeriod = uiState.selectedChartPeriod,
-                    onMetricSelected = { viewModel.onMetricSelected(it) },
-                    onPeriodSelected = { viewModel.onChartPeriodSelected(it) },
-                    state = uiState.chart,
-                    onRetry = viewModel::retryChart,
-                    demonstracao = uiState.simulated,
-                    onToggleDemo = viewModel::alternarDemonstracao
+                SystemPerformanceChart(
+                    uiState.chartPoints, uiState.filters.metric.key, uiState.selectedChartPeriod,
+                    viewModel::onMetricSelected, viewModel::onChartPeriodSelected, uiState.chart,
+                    viewModel::retryChart
                 )
 
                 RecentAlarmsSection(
@@ -87,7 +66,6 @@ fun DashboardScreen(
                     onSeeAllClick = { onNavigate("Alarmes") }
                 )
 
-                IndicadoresEnergeticosSection(periodText = uiState.filters.period)
 
                 Spacer(modifier = Modifier.height(16.dp))
             }

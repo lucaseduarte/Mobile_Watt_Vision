@@ -105,7 +105,7 @@ fun ConfiguracoesScreen(
             ) {
                 when (uiState.activeTab) {
                     0 -> AbaGeral(uiState = uiState, viewModel = viewModel)
-                    1 -> AbaUsuarios(uiState = uiState, carregarConta = carregarConta, onLogout = onLogout)
+                    1 -> AbaUsuarios(carregarConta = carregarConta, onLogout = onLogout)
                 }
             }
         }
@@ -236,7 +236,6 @@ fun AbaGeral(
 // ==========================================
 @Composable
 private fun AbaUsuarios(
-    uiState: ConfiguracoesUiState,
     carregarConta: suspend () -> UsuarioDto?,
     onLogout: (() -> Unit)?
 ) {
@@ -256,16 +255,8 @@ private fun AbaUsuarios(
         }
         contaConsultada = true
     }
-    val exemplo = remember { perfilDemonstracao() }
-    var demonstracaoAtiva by remember { mutableStateOf(false) }
-    val demonstracao = demonstracaoAtiva && meuUsuario == null && exemplo != null
-    val conta = meuUsuario ?: exemplo.takeIf { demonstracao }
-    val usuarios = remember(uiState.usuarios, conta) {
-        if (conta == null) uiState.usuarios
-        else listOf(conta) + uiState.usuarios.filterNot { it.email.equals(conta.email, ignoreCase = true) }
-    }
-    val admins = usuarios.count { it.perfil.equals("Administrador", ignoreCase = true) }
-    val gestores = usuarios.count { it.perfil.equals("Gestor", ignoreCase = true) }
+    val conta = meuUsuario
+    val usuarios = listOfNotNull(conta)
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -291,13 +282,13 @@ private fun AbaUsuarios(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Usuários do Sistema",
+                                text = "Conta atual",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextWhite
                             )
                             Text(
-                                text = "${usuarios.size} cadastrados ( $admins Admin · $gestores Gestores )",
+                                text = "Dados da sessão autenticada",
                                 fontSize = 11.sp,
                                 color = TextMuted
                             )
@@ -311,16 +302,7 @@ private fun AbaUsuarios(
         if (contaConsultada && meuUsuario == null) {
             item("conta-indisponivel") {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (demonstracao) {
-                        Text("DEBUG · DADOS SIMULADOS", fontSize = 12.sp, color = ToneYellowText)
-                    } else {
-                        Text("Meu perfil requer uma sessão autenticada.", fontSize = 12.sp, color = TextMuted)
-                    }
-                    if (exemplo != null) {
-                        OutlinedButton(onClick = { demonstracaoAtiva = !demonstracaoAtiva }) {
-                            Text(if (demonstracao) "Sair da demonstração" else "Ver demonstração de Meu perfil")
-                        }
-                    }
+                    Text("Meu perfil requer uma sessão autenticada.", fontSize = 12.sp, color = TextMuted)
                 }
             }
         }
@@ -418,7 +400,7 @@ private fun AbaUsuarios(
     if (mostrarPerfil && conta != null) {
         MeuPerfilSheet(
             conta,
-            demonstracao = demonstracao,
+            demonstracao = false,
             onLogout = onLogout,
             onFechar = { mostrarPerfil = false }
         )

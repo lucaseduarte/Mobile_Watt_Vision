@@ -10,6 +10,15 @@ import retrofit2.http.GET
 import retrofit2.http.Query
 import retrofit2.http.Path
 
+data class DispositivoConsultaDto(
+    val id: Long,
+    val identificador: String,
+    val nome: String,
+    val status: String?,
+    val data_comunicacao: String?,
+    val modelo: String?
+)
+
 interface WattVisionApiService {
     @GET("api/medicoes/resumo")
     suspend fun getResumoMedicoes(): Response<ApiResponse<MedicaoDto>>
@@ -35,6 +44,9 @@ interface WattVisionApiService {
 
     @GET("api/equipamentos/{id}")
     suspend fun getEquipamento(@Path("id") id: Int): Response<ApiResponse<EquipamentoDto>>
+
+    @GET("api/dispositivos-iot")
+    suspend fun getDispositivos(): Response<ApiResponse<List<DispositivoConsultaDto>>>
 
     @GET("api/alertas")
     suspend fun getAlertas(): Response<ApiResponse<List<AlertaDto>>>

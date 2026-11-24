@@ -26,7 +26,7 @@ import com.example.watt_vision_mobile.ui.theme.*
 @Composable
 fun AlarmesScreen(viewModel: AlarmesViewModel, onEntidadeClick: (AlarmeEntidade) -> Unit, modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsState()
-    AlarmesSourceHost(state, viewModel::updateFilters, viewModel::refresh, modifier, viewModel::entidade, onEntidadeClick)
+    AlarmesContent(state, viewModel::updateFilters, viewModel::refresh, modifier, viewModel::entidade, onEntidadeClick)
 }
 
 @Composable

@@ -33,7 +33,7 @@ class ConsultativeScopeTest {
     }
     @Test fun monitoringInterfaceExposesOnlyReviewedReadOperations() {
         val expected = setOf("api/medicoes/resumo", "api/medicoes/ultima", "api/medicoes/serie-temporal",
-            "api/medicoes/consumo", "api/equipamentos", "api/equipamentos/{id}", "api/alertas", "api/alertas/ativos")
+            "api/medicoes/consumo", "api/equipamentos", "api/equipamentos/{id}", "api/dispositivos-iot", "api/alertas", "api/alertas/ativos")
         val routes = WattVisionApiService::class.java.declaredMethods.filterNot { it.isSynthetic }.map {
             requireNotNull(it.getAnnotation(GET::class.java)).value
         }

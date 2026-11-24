@@ -2,6 +2,8 @@ package com.example.watt_vision_mobile.data.repository
 
 import com.example.watt_vision_mobile.data.api.WattVisionApiService
 import com.example.watt_vision_mobile.model.alarmes.AlarmeEntidade
+import com.example.watt_vision_mobile.model.EquipamentoDto
+import com.example.watt_vision_mobile.model.alarmes.AlarmeTipoEntidade
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.*
 import com.example.watt_vision_mobile.ui.screens.operacional.EquipamentoItem
 import kotlinx.coroutines.CancellationException
@@ -13,6 +15,21 @@ interface EquipamentoDetalheRepository {
 }
 
 class EquipamentoCadastroRepository(private val api: WattVisionApiService) {
+    suspend fun carregarEquipamento(equipamento: EquipamentoItem): Result<EquipamentoDetalheData> {
+        return try {
+            val id = equipamento.id.toInt()
+            val resposta = api.getEquipamento(id)
+            if (!resposta.isSuccessful) throw retrofit2.HttpException(resposta)
+            val cadastro = requireNotNull(resposta.body()?.takeIf { it.sucesso }?.dados)
+            check(cadastro.id == id)
+            Result.success(mapear(AlarmeEntidade(AlarmeTipoEntidade.EQUIPAMENTO, id, equipamento.nome), cadastro))
+        } catch (cancelada: CancellationException) {
+            throw cancelada
+        } catch (erro: Exception) {
+            Result.failure(erro)
+        }
+    }
+
     suspend fun carregar(entidade: AlarmeEntidade): EquipamentoDetalheData {
         val cadastro = if (entidade.demonstracao) null else try {
             api.getEquipamento(entidade.id)
@@ -24,6 +41,10 @@ class EquipamentoCadastroRepository(private val api: WattVisionApiService) {
             null
         }
 
+        return mapear(entidade, cadastro)
+    }
+
+    private fun mapear(entidade: AlarmeEntidade, cadastro: EquipamentoDto?): EquipamentoDetalheData {
         return EquipamentoDetalheData(
             id = entidade.id.toString(),
             codigo = cadastro?.codigo.orEmpty(),

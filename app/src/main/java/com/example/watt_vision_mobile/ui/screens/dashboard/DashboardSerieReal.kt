@@ -60,7 +60,7 @@ internal fun DashboardComSerieReal(
                 onClick = { fonte.selecionarModoReal(true) },
                 modifier = Modifier.padding(horizontal = 16.dp)
             ) { Text("Dados reais do Backend") }
-            DashboardScreen(viewModel, onNavigate, Modifier.weight(1f), modoCompartilhado = true)
+            DashboardScreen(viewModel, onNavigate, Modifier.weight(1f))
         }
     }
 }

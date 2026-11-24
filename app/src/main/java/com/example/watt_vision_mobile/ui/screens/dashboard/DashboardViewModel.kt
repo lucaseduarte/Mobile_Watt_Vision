@@ -7,7 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.watt_vision_mobile.model.LIMITE_REGISTROS_SERIE_TEMPORAL
 import com.example.watt_vision_mobile.model.MedicaoDto
 import com.example.watt_vision_mobile.ui.screens.medicoes.FonteSerieSimulada
-import com.example.watt_vision_mobile.ui.screens.medicoes.fonteSerieSimulada
+import com.example.watt_vision_mobile.ui.screens.medicoes.carregarFonteBackend
+import com.example.watt_vision_mobile.ui.screens.medicoes.ZONA_SERIE_REAL
+import com.example.watt_vision_mobile.data.api.integracaoLocal
+import retrofit2.HttpException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -26,7 +29,7 @@ class DashboardViewModel internal constructor(
     private val agora: () -> ZonedDateTime
 ) : AndroidViewModel(application) {
     constructor(application: Application, savedStateHandle: SavedStateHandle) :
-        this(application, savedStateHandle, fonteSerieSimulada(), { ZonedDateTime.now() })
+        this(application, savedStateHandle, null, { ZonedDateTime.now(ZONA_SERIE_REAL) })
 
     private val filtros = savedStateHandle.get<DashboardFilterState>(SAVED_FILTERS) ?: DashboardFilterState()
     private val _uiState = MutableStateFlow(DashboardUiState(
@@ -38,6 +41,8 @@ class DashboardViewModel internal constructor(
     val demonstracaoDisponivel = fonte != null
 
     private var carga: Job? = null
+
+    init { if (fonte == null && integracaoLocal) loadDashboardData() }
 
     fun alternarDemonstracao() {
         val fonte = fonte ?: return
@@ -58,14 +63,13 @@ class DashboardViewModel internal constructor(
     }
 
     fun loadDashboardData() {
-        val fonte = fonte ?: return
         val estado = _uiState.value
-        if (!estado.simulated) return
+        if (fonte == null && !integracaoLocal || fonte != null && !estado.simulated) return
         carga?.cancel()
         val filtros = estado.filters
         _uiState.update { it.copy(
             isLoading = true,
-            lastUpdatedText = "Dados simulados · Carregando",
+            lastUpdatedText = "Carregando medições",
             chart = ChartState(ChartStatus.LOADING),
             chartPoints = emptyList(),
             summaryCards = emptyList()
@@ -73,12 +77,14 @@ class DashboardViewModel internal constructor(
         carga = viewModelScope.launch {
             val momento = agora()
             val periodo = ChartLogic.period(filtros.period, momento.toLocalDateTime())
-            val (pzem, status) = fonte.catalogo.resolve(filtros)
-            if (periodo == null || pzem == null) {
-                concluir(ChartState(if (periodo == null) ChartStatus.UNSUPPORTED_PERIOD else status ?: ChartStatus.EMPTY))
-                return@launch
-            }
             try {
+                val fonte = fonte ?: carregarFonteBackend(getApplication())
+                _uiState.update { it.copy(chartCatalog = fonte.catalogo) }
+                val (pzem, status) = fonte.catalogo.resolve(filtros)
+                if (periodo == null || pzem == null) {
+                    concluir(ChartState(if (periodo == null) ChartStatus.UNSUPPORTED_PERIOD else status ?: ChartStatus.EMPTY))
+                    return@launch
+                }
                 val linhas = fonte.consultar(pzem, periodo.hours)
                 ensureActive()
                 check(linhas.all { it.id_pzem == pzem })
@@ -102,9 +108,9 @@ class DashboardViewModel internal constructor(
                 )
             } catch (cancelled: CancellationException) {
                 throw cancelled
-            } catch (_: Exception) {
+            } catch (erro: Exception) {
                 ensureActive()
-                concluir(ChartState(ChartStatus.ERROR))
+                concluir(ChartState(if (erro is HttpException && erro.code() == 403) ChartStatus.FORBIDDEN else ChartStatus.ERROR))
             }
         }
     }
@@ -113,9 +119,10 @@ class DashboardViewModel internal constructor(
         _uiState.update { it.copy(
             isLoading = false,
             lastUpdatedText = when (chart.status) {
-                ChartStatus.ERROR -> "Dados simulados · Falha na consulta"
-                ChartStatus.EMPTY -> "Dados simulados · Sem leituras"
-                else -> "Dados simulados"
+                ChartStatus.ERROR -> "Falha na consulta"
+                ChartStatus.EMPTY -> "Sem leituras no período"
+                ChartStatus.READY -> if (it.simulated) "Dados simulados" else "Dados do Backend"
+                else -> "Medições"
             },
             chart = chart,
             chartPoints = pontos,
@@ -128,12 +135,11 @@ class DashboardViewModel internal constructor(
             valor?.let { String.format(Locale.getDefault(), formato, it) } ?: "—"
 
         return listOf(
-            StatCardData("Consumo Total", formatar(ultima?.let(ChartMetric.ENERGY::value), "%.2f kWh"), "Contador do medidor"),
-            StatCardData("Dispositivos Ativos", "—", "Dados indisponíveis", tone = StatTone.GREEN, iconName = "check_circle"),
+            StatCardData("Energia acumulada", formatar(ultima?.let(ChartMetric.ENERGY::value), "%.2f kWh"), "Contador do medidor"),
             StatCardData("Potência Ativa", formatar(ultima?.let(ChartMetric.POWER::value)?.div(1_000), "%.2f kW"),
                 "Potência instantânea", tone = StatTone.YELLOW, iconName = "zap"),
             StatCardData("Tensão Atual", formatar(ultima?.let(ChartMetric.VOLTAGE::value), "%.1f V"), "Tensão da rede", iconName = "flash"),
-            StatCardData("Corrente Média", "—", "Dados indisponíveis", tone = StatTone.GREEN, iconName = "activity"),
+            StatCardData("Corrente", formatar(ultima?.let(ChartMetric.CURRENT::value), "%.2f A"), "Última leitura"),
             StatCardData("Frequência", formatar(ultima?.let(ChartMetric.FREQUENCY::value), "%.1f Hz"), "Frequência da rede", iconName = "activity")
         )
     }

@@ -136,14 +136,14 @@ internal fun ConectividadeScreen(
                     WattVisionHeaderShortcut(Icons.Filled.Settings, "Configurações do sistema") { onNavigate("Configurações") }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Dados simulados", style = MaterialTheme.typography.labelMedium, color = ToneBlueText)
+                    Text("Status registrado no Backend", style = MaterialTheme.typography.labelMedium, color = ToneBlueText)
                     IconButton(onClick = viewModel::atualizar, enabled = !estado.carregando) {
                         Icon(Icons.Default.Refresh, "Atualizar conectividade", tint = ToneBlueText)
                     }
                 }
                 if (estado.carregando) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (estado.erro) {
-                    Text("Falha ao atualizar a conectividade simulada.", color = TextSubtle)
+                    Text("Falha ao consultar a conectividade.", color = TextSubtle)
                     TextButton(onClick = viewModel::atualizar) { Text("Tentar novamente") }
                 }
             }
@@ -402,9 +402,6 @@ private fun DispositivoCabecalho(dispositivo: DispositivoConectividade) {
             itemVerticalAlignment = Alignment.CenterVertically
         ) {
             Text(dispositivo.nome, fontSize = 14.sp, color = TextSubtle)
-            if (dispositivo.equipamento.isNotBlank()) {
-                Selo("• Vínculo simulado", ToneBlueText, ToneBlueBg)
-            }
         }
     }
 }
@@ -428,7 +425,7 @@ private val colunasHistorico = listOf(
 private fun HistoricoTabela(eventos: List<Evento>, hoje: LocalDate) {
     Painel {
         if (eventos.isEmpty()) {
-            Text("Nenhum evento neste período.", color = TextSubtle)
+            Text("O histórico de eventos não está disponível no Backend.", color = TextSubtle)
         } else {
             val larguras = largurasHistorico(eventos, hoje)
             val largura = larguras.fold(0.dp) { total, coluna -> total + coluna }

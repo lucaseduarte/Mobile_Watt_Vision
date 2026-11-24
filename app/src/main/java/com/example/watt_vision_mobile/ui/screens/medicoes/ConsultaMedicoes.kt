@@ -88,7 +88,7 @@ internal fun consultarMedicoes(
                 return@produceState
             }
 
-            val agora = java.time.ZonedDateTime.now()
+            val agora = java.time.ZonedDateTime.now(ZONA_SERIE_REAL)
             val janela = janelaMedicoes(filtros.period, agora)
             value = try {
                 val linhas = fonte.consultar(pzem, janela.horas)
@@ -107,7 +107,7 @@ internal fun consultarMedicoes(
                 currentCoroutineContext().ensureActive()
                 ConsultaMedicoes(
                     catalogo = fonte.catalogo,
-                    aviso = "Não foi possível consultar as medições simuladas.",
+                    aviso = "Não foi possível consultar as medições.",
                     tentarNovamente = atualizar
                 )
             }

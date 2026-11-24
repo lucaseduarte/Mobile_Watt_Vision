@@ -202,7 +202,7 @@ fun EquipamentoDetalheScreen(
                                     }
                                 }
                         ) {
-                            if (equipamento != null || entidadeDoAlarme?.demonstracao == true) {
+                            if (entidadeDoAlarme?.demonstracao == true) {
                                 Text(
                                     "Dados simulados",
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),

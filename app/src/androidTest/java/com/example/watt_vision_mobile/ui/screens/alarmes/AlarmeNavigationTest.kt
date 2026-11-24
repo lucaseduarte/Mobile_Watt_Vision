@@ -13,22 +13,15 @@ import org.junit.Test
 class AlarmeNavigationTest {
     @get:Rule val compose = createComposeRule()
 
-    @Test fun opensEquipmentInOperacionalAndReturnsToAlarmList() {
+    @Test fun opensAlarmListWithoutDemonstrationControls() {
         compose.setContent {
             val application = LocalContext.current.applicationContext as Application
             val user = UsuarioDto(1, 2, "Pessoa Fictícia", "teste@example.invalid", "Gestor", "Ativo")
             WattVisionTheme { ProtectedNavigation(application, user, onLogout = {}) }
         }
         compose.onNodeWithContentDescription("Alarmes recentes").performClick()
-        compose.onNodeWithText("Ver demonstração de Alarmes").performClick()
-        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Equipamento de exemplo 1", substring = true))
-        compose.onNodeWithText("Equipamento de exemplo 1", substring = true).performClick()
-        compose.onNodeWithText("Ver Equipamento").performScrollTo().performClick()
-
-        compose.onNodeWithContentDescription("Voltar aos alarmes").assertIsDisplayed()
-        compose.onNodeWithText("Identificação").assertIsDisplayed()
-        compose.onNodeWithText("Local de exemplo  ·  Setor de exemplo").assertIsDisplayed()
-        compose.onNodeWithContentDescription("Voltar aos alarmes").performClick()
-        compose.onNodeWithText("Voltar aos dados da API").assertIsDisplayed()
+        compose.onNodeWithText("Lista de alarmes").assertExists()
+        compose.onNodeWithText("Ver demonstração de Alarmes").assertDoesNotExist()
+        compose.onNodeWithText("Equipamento de exemplo 1", substring = true).assertDoesNotExist()
     }
 }

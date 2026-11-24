@@ -130,40 +130,35 @@ private data class FiltrosMedicao(
 @Composable
 internal fun MedicoesScreen(
     onNavigate: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    serieReal: SerieRealViewModel? = null
+    modifier: Modifier = Modifier
 ) {
-    var filtrosReais by rememberSaveable(stateSaver = FiltrosMedicao.Saver) { mutableStateOf(FiltrosMedicao()) }
-    var filtrosDemo by rememberSaveable(stateSaver = FiltrosMedicao.Saver) { mutableStateOf(FiltrosMedicao()) }
+    var filtros by rememberSaveable(stateSaver = FiltrosMedicao.Saver) { mutableStateOf(FiltrosMedicao()) }
     var filtrosAbertos by rememberSaveable { mutableStateOf(false) }
-    var pontosAbertos by rememberSaveable { mutableStateOf(false) }
-
-    val fonte: FonteSerieSimulada? = remember { fonteSerieSimulada() }
-    val estadoReal = serieReal?.estadoDaFonte()
-    val real = estadoReal?.modoReal == true
-    var demonstracaoAtiva by rememberSaveable { mutableStateOf(serieReal != null && fonte != null) }
     var revisao by remember { mutableIntStateOf(0) }
-    val simulada = !real && fonte != null && (serieReal?.habilitada == true || demonstracaoAtiva)
-    val filtros = if (simulada) filtrosDemo else filtrosReais
-    val grandeza = filtros.grandeza
-    val aplicarFiltros: (FiltrosMedicao) -> Unit = {
-        if (simulada) filtrosDemo = it else filtrosReais = it
-    }
-    val atualizar: () -> Unit = {
-        if (real) serieReal.fonte.atualizar() else revisao++
-    }
-    val consulta = when {
-        real -> remember(estadoReal, grandeza, serieReal) {
-            consultaMedicoesReal(estadoReal, grandeza.metrica, atualizar)
+    val contexto = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    val fonte by androidx.compose.runtime.produceState<Result<FonteSerieSimulada>?>(null, contexto, revisao) {
+        if (!com.example.watt_vision_mobile.data.api.integracaoLocal) return@produceState
+        value = null
+        value = try {
+            Result.success(carregarFonteBackend(contexto))
+        } catch (cancelada: kotlinx.coroutines.CancellationException) {
+            throw cancelada
+        } catch (erro: Exception) {
+            Result.failure(erro)
         }
-        simulada ->
-            consultarMedicoes(fonte, filtros.filtroConsulta().copy(metric = grandeza.metrica), revisao, atualizar)
-        else -> ConsultaMedicoes(aviso = "Consultas de negócio suspensas.")
     }
-    val periodoVisivel = if (real) "Últimas ${estadoReal.horas} horas" else filtros.periodo
-    val ultima = if (real) consulta.registros.firstOrNull()?.let {
-        valorExibidoMedicao(grandeza.metrica, it.dados)
-    } else consulta.serie.amostras.lastOrNull()?.valor
+    val grandeza = filtros.grandeza
+    val aplicarFiltros: (FiltrosMedicao) -> Unit = { filtros = it }
+    val atualizar: () -> Unit = { revisao++ }
+    val dados = fonte?.getOrNull()
+    val consulta = when {
+        dados != null -> consultarMedicoes(dados, filtros.filtroConsulta().copy(metric = grandeza.metrica), revisao, atualizar)
+        !com.example.watt_vision_mobile.data.api.integracaoLocal -> ConsultaMedicoes(aviso = "Consultas de negócio suspensas.")
+        fonte == null -> ConsultaMedicoes(carregando = true)
+        else -> ConsultaMedicoes(aviso = "Falha ao carregar o catálogo de medições.", tentarNovamente = atualizar)
+    }
+    val periodoVisivel = filtros.periodo
+    val ultima = consulta.registros.firstOrNull()?.let { valorExibidoMedicao(grandeza.metrica, it.dados) }
     val valores = remember(consulta.serie) { consulta.serie.amostras.map { it.valor } }
     val casas = when (grandeza) {
         Grandeza.POTENCIA, Grandeza.ENERGIA, Grandeza.FATOR_POTENCIA -> 3
@@ -186,60 +181,13 @@ internal fun MedicoesScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             val chips = filtros.chipsAtivos()
-            if (serieReal?.habilitada == true) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(onClick = {
-                        filtrosAbertos = false
-                        pontosAbertos = false
-                        serieReal.fonte.selecionarModoReal(!real)
-                    }) { Text(if (real) "Dados simulados" else "Dados reais do Backend") }
-                    if (real || simulada) {
-                        IconButton(
-                            onClick = atualizar,
-                            enabled = !real || estadoReal?.resultado != ResultadoSerieReal.Carregando
-                        ) {
-                            Icon(Icons.Filled.Refresh, contentDescription =
-                                if (real) "Atualizar medições reais" else "Atualizar medições simuladas")
-                        }
-                    }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                IconButton(onClick = atualizar, enabled = !consulta.carregando) {
+                    Icon(Icons.Filled.Refresh, contentDescription = "Atualizar medições")
                 }
-            } else if (fonte != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(
-                        onClick = { demonstracaoAtiva = !demonstracaoAtiva },
-                        modifier = Modifier.heightIn(min = 48.dp)
-                    ) {
-                        Text(if (simulada) "Sair da demonstração" else "Demonstração")
-                    }
-                    if (simulada) {
-                        IconButton(onClick = atualizar) {
-                            Icon(Icons.Filled.Refresh, contentDescription = "Atualizar medições simuladas")
-                        }
-                    }
-                }
+                BotaoFiltros(chips.size) { filtrosAbertos = true }
             }
-            if (real) {
-                ResumoConsultaReal(estadoReal)
-                OpcoesMedicao("Janela solicitada", "${estadoReal.horas} h", JANELAS_SERIE_REAL.map { "$it h" }, true) {
-                    serieReal.fonte.selecionarJanela(it.substringBefore(' ').toInt())
-                }
-                OpcoesMedicao("Grandeza", grandeza.rotulo, Grandeza.entries.map { it.rotulo }) { escolha ->
-                    aplicarFiltros(filtros.copy(grandeza = Grandeza.entries.first { it.rotulo == escolha }))
-                }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    BotaoPontosMedicao(Modifier.weight(1f)) { pontosAbertos = true }
-                    BotaoFiltros(chips.size) { filtrosAbertos = true }
-                }
-            }
-            if (simulada) {
-                Text("Demonstração · Dados simulados", color = TextSubtle, fontSize = 12.sp)
-            }
-            if (!real && chips.isNotEmpty()) {
+            if (chips.isNotEmpty()) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(chips, key = { it.first }) { (rotulo, filtrosAtualizados) ->
                         InputChip(
@@ -275,23 +223,19 @@ internal fun MedicoesScreen(
                 )
             }
             CardMedicao(
-                if (real) "Última leitura" else "Valor Atual", formatarResumo(ultima), grandeza.unidade,
+                "Última leitura", formatarResumo(ultima), grandeza.unidade,
                 "Última leitura de ${grandeza.descricao}", IconeMedicao.ATUAL, Modifier.fillMaxWidth()
             )
-            key(filtros, simulada) {
+            key(filtros) {
                 GraficoMedicoes(grandeza.metrica, grandeza.unidade, periodoVisivel, consulta)
             }
-            key(filtros.filtroConsulta(), simulada) {
+            key(filtros.filtroConsulta()) {
                 TabelaDadosBrutos(consulta, grandeza.metrica)
             }
         }
     }
 
-    if (!real && pontosAbertos) {
-        PontosMedicaoSheet(onFechar = { pontosAbertos = false })
-    }
-
-    if (!real && filtrosAbertos) {
+    if (filtrosAbertos) {
         FiltrosMedicaoSheet(
             filtros = filtros,
             catalogo = consulta.catalogo,

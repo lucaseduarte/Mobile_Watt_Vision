@@ -161,40 +161,18 @@ class AuthenticatedNavigationTest {
         assertEquals(List(2) { "GET /api/auth/me" }, requests.toList())
     }
 
-    @Test fun dashboardEMedicoesMantemDemonstracaoComTransporteRealDesligado() {
+    @Test fun dashboardEMedicoesNaoOferecemDadosSimulados() {
         store.token = TOKEN
         launch()
         expectDashboard()
-
-        compose.onNodeWithText("Ver demonstração do gráfico").performScrollTo().performClick()
-        waitForText("Potência Ativa")
-        compose.onNodeWithText("Potência Ativa").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Sair da demonstração").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Dados reais do Backend").assertDoesNotExist()
+        compose.onNodeWithText("Ver demonstração do gráfico").assertDoesNotExist()
+        compose.onNodeWithText("Dados simulados").assertDoesNotExist()
 
         compose.onNodeWithContentDescription("Medições").performClick()
-        waitForText("Demonstração · Dados simulados")
-        compose.onNodeWithText("Demonstração · Dados simulados").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Dados Brutos").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Dados reais do Backend").assertDoesNotExist()
-        compose.onNodeWithContentDescription("Atualizar medições reais").assertDoesNotExist()
-
-        compose.onNodeWithContentDescription("Dashboard").performClick()
-        compose.onNodeWithText("Sair da demonstração").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Potência Ativa").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithContentDescription("Medições").performClick()
-        compose.onNodeWithText("Demonstração · Dados simulados").performScrollTo().assertIsDisplayed()
+        waitForText("Medições")
+        compose.onNodeWithText("Demonstração").assertDoesNotExist()
+        compose.onNodeWithText("Demonstração · Dados simulados").assertDoesNotExist()
         assertBusinessBlocked()
-        assertEquals(listOf("GET /api/auth/me"), requests.toList())
-
-        runBlocking { repository.logout() }
-        expectLogin()
-        assertNull(repository.currentCredential())
-        assertNull(store.token)
-        submitLogin()
-        expectDashboard()
-        compose.onNodeWithText("Potência Ativa").assertDoesNotExist()
-        assertEquals(listOf("GET /api/auth/me") + authRequests, requests.toList())
     }
 
     @Test fun logoutFromProfileReturnsToLoginAndClearsStoredCredential() {
@@ -214,24 +192,13 @@ class AuthenticatedNavigationTest {
         assertEquals(listOf("GET /api/auth/me"), requests.toList())
     }
 
-    @Test fun operationalDetailsFollowSelectionAndNavigationResetsAfterLogout() {
+    @Test fun operationalNavigationReturnsToDashboardAfterLogout() {
         store.token = TOKEN
         launch()
         expectDashboard()
         compose.onNodeWithContentDescription("Operacional").performClick()
-        waitForText("Compressor de Ar Industrial 2")
-        compose.onNodeWithText("Compressor de Ar Industrial 2").performClick()
-        waitForText("EQ-002  ·  Planta Industrial Jandira  ·  Produção B")
-        compose.onNodeWithContentDescription("Voltar para lista de equipamentos").performClick()
-
         compose.onNodeWithContentDescription("Aba Setores, selecionada: false").performClick()
-        compose.onNodeWithText("SET-01-1").performClick()
-        waitForText("SET-01-1  ·  Local: Planta Industrial Jandira  ·  Dados simulados")
-        compose.onNodeWithContentDescription("Voltar").performClick()
-
-        compose.onNodeWithContentDescription("Aba Locais, selecionada: false").performClick()
-        compose.onNodeWithText("Planta Industrial Osasco").performClick()
-        waitForText("LOC-002  ·  Unidade Operacional  ·  Dados simulados")
+        compose.onNodeWithContentDescription("Aba Setores, selecionada: true").assertIsDisplayed()
 
         runBlocking { repository.logout() }
         expectLogin()
@@ -239,34 +206,20 @@ class AuthenticatedNavigationTest {
         expectDashboard()
         compose.onNodeWithContentDescription("Operacional").performClick()
         compose.onNodeWithContentDescription("Aba Equipamentos, selecionada: true").assertIsDisplayed()
-        compose.onNodeWithText("LOC-002  ·  Unidade Operacional  ·  Dados simulados").assertDoesNotExist()
         assertBusinessBlocked()
         assertEquals(listOf("GET /api/auth/me") + authRequests, requests.toList())
     }
 
-    @Test fun connectivityOpensTheFilteredDeviceAndItsOwnEvents() {
+    @Test fun connectivityDoesNotInventDevicesWhenConsultationIsOff() {
+        org.junit.Assume.assumeFalse(com.example.watt_vision_mobile.data.api.integracaoLocal)
         store.token = TOKEN
         launch()
         expectDashboard()
         compose.onNodeWithContentDescription("Conectividade").performClick()
-        val lista = compose.onNode(hasScrollToIndexAction() and SemanticsMatcher.keyIsDefined(
-            androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange
-        ))
-        lista.performScrollToNode(hasText("Pesquisar dispositivo ou código..."))
-        compose.onNode(hasSetTextAction()).performTextInput("ESP32-006")
-        lista.performScrollToNode(hasText("Ver detalhes"))
-        compose.onNodeWithText("Ver detalhes").performClick()
-
-        compose.onNodeWithText("ESP32-006").assertIsDisplayed()
-        compose.onNodeWithText("● Offline").assertIsDisplayed()
-        compose.onNodeWithText("Histórico").performClick()
-        compose.onNodeWithText("Queda de Conexão").assertIsDisplayed()
-        compose.onNodeWithText("Conectado").assertDoesNotExist()
-
-        compose.onNodeWithContentDescription("Voltar").performClick()
-        compose.onNodeWithContentDescription("Conectividade").assertIsDisplayed()
+        waitForText("Falha ao consultar a conectividade.")
+        compose.onNodeWithText("ESP32-006").assertDoesNotExist()
+        compose.onNodeWithText("Dados simulados").assertDoesNotExist()
         assertBusinessBlocked()
-        assertEquals(listOf("GET /api/auth/me"), requests.toList())
     }
 
     @Test fun delayedIdentityCannotRestoreAnEndedSession() {

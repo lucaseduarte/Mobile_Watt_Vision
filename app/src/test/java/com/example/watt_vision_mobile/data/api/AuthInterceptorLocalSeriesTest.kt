@@ -19,7 +19,7 @@ import org.junit.Test
 import retrofit2.Invocation
 
 class AuthInterceptorLocalSeriesTest {
-    private val origin = "http://10.0.2.2:3000"
+    private val origin = "http://127.0.0.1:13000"
     private val path = "/api/medicoes/serie-temporal"
     private val seriesMethod = WattVisionApiService::class.java.methods.single {
         it.name == "getSerieTemporal"
@@ -71,7 +71,7 @@ class AuthInterceptorLocalSeriesTest {
         Transport(enabled = false).assertBlocked(series())
     }
 
-    @Test fun debugAcceptsOnlyApprovedWindowsAndUsesCurrentBearer() {
+    @Test fun debugAcceptsBoundedWindowsAndUsesCurrentBearer() {
         assumeTrue(BuildConfig.DEBUG)
         val transport = Transport()
         for (hours in listOf(6, 24, 48, 168)) {
@@ -86,7 +86,7 @@ class AuthInterceptorLocalSeriesTest {
     @Test fun rejectsUnexpectedSensorRouteMethodOriginInvocationAndQuery() {
         assumeTrue(BuildConfig.DEBUG)
         val forbidden = listOf(
-            series("id_pzem=2&horas=24"),
+            series("id_pzem=0&horas=24"),
             series().newBuilder().url("$origin/api/medicoes/resumo?id_pzem=1&horas=24").build(),
             series().newBuilder().post("".toRequestBody()).build(),
             series().newBuilder().url("http://127.0.0.1:3000$path?id_pzem=1&horas=24").build(),
@@ -96,7 +96,7 @@ class AuthInterceptorLocalSeriesTest {
             series("id_pzem=1&id_pzem=1&horas=24"),
             series("id_pzem=1&horas=24&horas=24"),
             series("id_pzem=1&horas=24&local=A"),
-            series("id_pzem=1&horas=100"),
+            series("id_pzem=1&horas=721"),
             series("id_pzem=1")
         )
         forbidden.forEach { Transport().assertBlocked(it) }

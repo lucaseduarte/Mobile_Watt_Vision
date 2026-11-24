@@ -82,7 +82,7 @@ internal fun RelatoriosScreen(viewModel: RelatoriosViewModel, modifier: Modifier
         }
     }
     val relatorio = estado.relatorio
-    val documento = relatorio?.takeIf { estado.demonstracao && it.podeExportar }?.let { RelatorioDocumento(it, estado) }
+    val documento = relatorio?.takeIf { it.podeExportar }?.let { RelatorioDocumento(it, estado) }
     val nomePdf = "relatorio-${estado.filtros.periodo.titulo.lowercase(ptRelatorio).replace(' ', '-')}.pdf"
     val posicao = rememberLazyListState()
     Scaffold(
@@ -94,7 +94,7 @@ internal fun RelatoriosScreen(viewModel: RelatoriosViewModel, modifier: Modifier
                 title = "Relatórios",
                 subtitle = "Visão geral do sistema",
                 actions = {
-                    IconButton(onClick = viewModel::atualizar, enabled = estado.demonstracao && !estado.carregando) {
+                    IconButton(onClick = viewModel::atualizar, enabled = !estado.carregando) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Atualizar dados")
                     }
                     IconButton(enabled = documento != null && !gerandoPdf, onClick = {
@@ -156,7 +156,7 @@ internal fun RelatoriosScreen(viewModel: RelatoriosViewModel, modifier: Modifier
                         }
                         Surface(shape = RoundedCornerShape(20.dp), color = ToneBlueBg) {
                             Text(
-                                if (estado.demonstracao) "Tarifa simulada: ${moedaRelatorio(estado.tarifa)}/kWh" else "Tarifa indisponível",
+                                "Tarifa indisponível para o relatório",
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                 color = ToneBlueText,
                                 style = MaterialTheme.typography.labelMedium
@@ -164,18 +164,6 @@ internal fun RelatoriosScreen(viewModel: RelatoriosViewModel, modifier: Modifier
                         }
                     }
                     BotaoFiltrosRelatorio(estado.filtros.ativos) { filtrosAbertos = true }
-                }
-            }
-            if (estado.demonstracaoDisponivel) {
-                item("demonstracao") {
-                    if (estado.demonstracao) {
-                        CardRelatorio {
-                            Text("DEBUG · DADOS SIMULADOS", color = ToneBlueText, fontWeight = FontWeight.Bold)
-                            TextButton(onClick = { viewModel.demonstracao(false) }) { Text("Sair da demonstração") }
-                        }
-                    } else {
-                        OutlinedButton(onClick = { viewModel.demonstracao(true) }) { Text("Ver demonstração de Relatórios") }
-                    }
                 }
             }
             if (relatorio != null) item("cobertura") {
@@ -218,7 +206,7 @@ internal fun RelatoriosScreen(viewModel: RelatoriosViewModel, modifier: Modifier
                 }
                 relatorio == null || relatorio.leituras == 0 -> item("vazio") {
                     CardRelatorio {
-                        Text(if (estado.demonstracao) "Nenhuma leitura para os filtros selecionados." else "Nenhuma fonte de medições disponível.")
+                        Text("Nenhuma leitura para os filtros selecionados.")
                     }
                 }
                 aba == 0 -> {
@@ -275,7 +263,7 @@ internal fun CardRelatorio(modifier: Modifier = Modifier, content: @Composable C
 @Composable
 private fun ResumoRelatorio(estado: RelatoriosUiState) {
     val r = estado.relatorio
-    fun energia(valor: Double?) = valor?.let { "${numeroRelatorio(it)} kWh" } ?: "—"
+    fun energia(valor: Double?) = valor?.let { "${numeroRelatorio(it, 3)} kWh" } ?: "—"
     val indicadores = listOf(
         Triple("Consumo observado", energia(r?.consumo), Icons.Outlined.Bolt),
         Triple("Média diária observada", energia(r?.media), Icons.AutoMirrored.Outlined.TrendingUp),

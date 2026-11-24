@@ -17,9 +17,14 @@ import java.time.ZonedDateTime
 internal class RelatoriosViewModel(
     application: Application,
     private val fonteDemo: (suspend (ZonedDateTime) -> FonteRelatorio)?,
+    private val carregarBackend: (suspend (ZonedDateTime) -> FonteRelatorio)? = null,
     private val relogio: () -> ZonedDateTime
 ) : AndroidViewModel(application) {
-    constructor(application: Application) : this(application, fonteDemonstrativaRelatorio(), { ZonedDateTime.now() })
+    constructor(application: Application) : this(
+        application, null,
+        if (com.example.watt_vision_mobile.data.api.integracaoLocal) ({ carregarRelatorioBackend(application) }) else null,
+        { ZonedDateTime.now(com.example.watt_vision_mobile.ui.screens.medicoes.ZONA_SERIE_REAL) }
+    )
     private val estado = MutableStateFlow(
         RelatoriosUiState(
             demonstracaoDisponivel = fonteDemo != null
@@ -30,6 +35,8 @@ internal class RelatoriosViewModel(
     private var consulta: Job? = null
     private var fonte: FonteRelatorio? = null
     private var referencia: ZonedDateTime? = null
+
+    init { if (carregarBackend != null) atualizar() }
 
     fun demonstracao(ativa: Boolean) {
         consulta?.cancel()
@@ -44,11 +51,11 @@ internal class RelatoriosViewModel(
 
     fun aplicar(filtros: FiltrosRelatorio) {
         estado.update { it.copy(filtros = filtros) }
-        if (estado.value.demonstracao) consultar(recarregar = false)
+        if (carregarBackend != null || estado.value.demonstracao) consultar(recarregar = false)
     }
 
     fun atualizar() {
-        if (estado.value.demonstracao) consultar(recarregar = true)
+        if (carregarBackend != null || estado.value.demonstracao) consultar(recarregar = true)
     }
 
     override fun onCleared() {
@@ -60,7 +67,7 @@ internal class RelatoriosViewModel(
     }
 
     private fun consultar(recarregar: Boolean) {
-        val carregar = fonteDemo ?: return
+        val carregar = carregarBackend ?: fonteDemo ?: return
         consulta?.cancel()
         val atual = estado.value
         estado.update { it.copy(carregando = true, erro = null, relatorio = null) }
@@ -69,7 +76,7 @@ internal class RelatoriosViewModel(
                 val agora = if (recarregar) relogio() else referencia ?: relogio()
                 val (dados, relatorio) = withContext(Dispatchers.Default) {
                     val dados = if (recarregar) carregar(agora) else fonte ?: carregar(agora)
-                    dados to montarRelatorio(dados, atual.filtros, atual.tarifa, agora)
+                    dados to montarRelatorio(dados, atual.filtros, atual.tarifa.takeIf { atual.demonstracao }, agora)
                 }
                 ensureActive()
                 fonte = dados

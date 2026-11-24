@@ -31,10 +31,11 @@ import com.example.watt_vision_mobile.model.alarmes.AlarmeTipoEntidade
 import com.example.watt_vision_mobile.ui.components.WattVisionBottomBar
 import com.example.watt_vision_mobile.ui.screens.conectividade.ConectividadeScreen
 import com.example.watt_vision_mobile.ui.screens.conectividade.ConectividadeViewModel
+import com.example.watt_vision_mobile.ui.screens.conectividade.fonteConectividadeBackend
 import com.example.watt_vision_mobile.ui.screens.conectividade.DispositivoDetalhesScreen
 import com.example.watt_vision_mobile.ui.screens.configuracoes.ConfiguracoesScreen
 import com.example.watt_vision_mobile.ui.screens.configuracoes.ConfiguracoesViewModel
-import com.example.watt_vision_mobile.ui.screens.dashboard.DashboardComSerieReal
+import com.example.watt_vision_mobile.ui.screens.dashboard.DashboardScreen
 import com.example.watt_vision_mobile.ui.screens.dashboard.DashboardViewModel
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.EquipamentoDetalheScreen
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.EquipamentoDetalheViewModel
@@ -49,7 +50,6 @@ import com.example.watt_vision_mobile.ui.screens.operacional.SetorDetalheScreen
 import com.example.watt_vision_mobile.ui.screens.alarmes.AlarmesScreen
 import com.example.watt_vision_mobile.ui.screens.alarmes.AlarmesViewModel
 import com.example.watt_vision_mobile.ui.screens.medicoes.MedicoesScreen
-import com.example.watt_vision_mobile.ui.screens.medicoes.SerieRealViewModel
 import com.example.watt_vision_mobile.ui.screens.placeholder.PlaceholderScreen
 import com.example.watt_vision_mobile.ui.screens.relatorios.RelatoriosScreen
 import com.example.watt_vision_mobile.ui.screens.relatorios.RelatoriosViewModel
@@ -132,7 +132,7 @@ internal fun ProtectedNavigation(
                     DashboardViewModel::class.java -> DashboardViewModel(application, SavedStateHandle())
                     EquipamentoDetalheViewModel::class.java -> EquipamentoDetalheViewModel(application)
                     OperacionalViewModel::class.java -> OperacionalViewModel(application, SavedStateHandle())
-                    ConectividadeViewModel::class.java -> ConectividadeViewModel()
+                    ConectividadeViewModel::class.java -> ConectividadeViewModel(fonteConectividadeBackend(application))
                     else -> return super.create(modelClass)
                 }
                 return requireNotNull(modelClass.cast(model))
@@ -140,7 +140,6 @@ internal fun ProtectedNavigation(
         }
         ViewModelProvider(store, factory)
     }
-    val serieReal by remember(provider) { lazy { provider[SerieRealViewModel::class.java] } }
     val dashboardViewModel by remember(provider) { lazy { provider[DashboardViewModel::class.java] } }
     val operacionalViewModel by remember(provider) { lazy { provider[OperacionalViewModel::class.java] } }
     val equipamentoDetalheViewModel by remember(provider) { lazy { provider[EquipamentoDetalheViewModel::class.java] } }
@@ -177,9 +176,8 @@ internal fun ProtectedNavigation(
         val contentModifier = Modifier.padding(innerPadding)
         when (selectedRoute) {
             "Dashboard" -> {
-                DashboardComSerieReal(
+                DashboardScreen(
                     viewModel = dashboardViewModel,
-                    serieReal = serieReal,
                     onNavigate = { route -> selectedRoute = route },
                     modifier = contentModifier
                 )
@@ -301,8 +299,7 @@ internal fun ProtectedNavigation(
             "Medições" -> routeState.SaveableStateProvider("Medições") {
                 MedicoesScreen(
                     onNavigate = { route -> selectedRoute = route },
-                    modifier = contentModifier,
-                    serieReal = serieReal
+                    modifier = contentModifier
                 )
             }
             else -> {
