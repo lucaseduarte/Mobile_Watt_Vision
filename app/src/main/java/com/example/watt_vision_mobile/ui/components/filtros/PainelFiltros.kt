@@ -21,10 +21,12 @@ fun PainelFiltros(
     onDismiss: () -> Unit,
     onClear: () -> Unit,
     onApply: () -> Unit,
+    abrirExpandido: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = abrirExpandido),
         containerColor = SurfaceDark,
         contentWindowInsets = { WindowInsets.navigationBars }
     ) {

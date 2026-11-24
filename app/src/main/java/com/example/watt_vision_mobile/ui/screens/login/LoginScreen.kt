@@ -37,7 +37,6 @@ import com.example.watt_vision_mobile.ui.theme.*
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel,
-    onLoginSuccess: () -> Unit,
     onForgotPasswordClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -207,7 +206,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Button(
-                    onClick = { viewModel.login(onSuccess = onLoginSuccess) },
+                    onClick = viewModel::login,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),

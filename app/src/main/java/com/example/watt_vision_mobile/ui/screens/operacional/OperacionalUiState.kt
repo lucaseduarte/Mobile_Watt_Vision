@@ -6,8 +6,10 @@ data class LocalItem(
     val nome: String,
     val setoresVinculados: Int,
     val equipamentosVinculados: Int,
-    val consumoAcumuladoKwh: Double,
-    val status: String // Ativo ou Inativo
+    val consumoAcumuladoKwh: Double?,
+    val status: String,
+    val endereco: String? = null,
+    val responsavel: String? = null
 )
 
 data class SetorItem(
@@ -16,8 +18,10 @@ data class SetorItem(
     val nome: String,
     val localNome: String,
     val equipamentosVinculados: Int,
-    val consumoAcumuladoKwh: Double,
-    val status: String // Ativo ou Inativo
+    val consumoAcumuladoKwh: Double?,
+    val status: String,
+    val localId: String,
+    val responsavel: String? = null
 )
 
 data class EquipamentoItem(
@@ -26,9 +30,10 @@ data class EquipamentoItem(
     val nome: String,
     val localNome: String,
     val setorNome: String,
-    val potenciaW: Double,
-    val consumoKwh: Double,
-    val status: String // Ativo ou Inativo
+    val potenciaW: Double?,
+    val consumoKwh: Double?,
+    val status: String,
+    val setorId: String
 )
 
 data class TabFilterState(
@@ -37,7 +42,7 @@ data class TabFilterState(
     val locationFilter: String = "Todos",
     val sectorFilter: String = "Todos",
     val equipmentFilter: String = "Todos"
-) {
+) : java.io.Serializable {
     val isDefault: Boolean
         get() = searchQuery.isBlank() &&
                 statusFilter == "Todos" &&

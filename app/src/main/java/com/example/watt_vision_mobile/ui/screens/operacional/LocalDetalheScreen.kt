@@ -1,5 +1,6 @@
 package com.example.watt_vision_mobile.ui.screens.operacional
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,7 +31,8 @@ fun LocalDetalheScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val consumoStr = String.format(Locale.getDefault(), "%.1f kWh", local.consumoAcumuladoKwh)
+    BackHandler(onBack = onBackClick)
+    val consumoStr = local.consumoAcumuladoKwh?.let { String.format(Locale.getDefault(), "%.1f kWh", it) } ?: "—"
 
     val sampleAlarmes = listOf(
         AlertaDetalheItem(
@@ -80,7 +82,7 @@ fun LocalDetalheScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "${local.codigo}  ·  Unidade Operacional",
+                            text = "${local.codigo}  ·  Unidade Operacional  ·  Dados simulados",
                             fontSize = 11.sp,
                             color = TextMuted,
                             maxLines = 1,
@@ -113,7 +115,7 @@ fun LocalDetalheScreen(
 
             // Seção de Alarmes do Local
             item {
-                AlarmesSecao(alarmes = sampleAlarmes)
+                AlarmesSecao(alarmes = sampleAlarmes.takeIf { local.id == "1" }.orEmpty())
             }
 
             // Identificação
@@ -121,7 +123,7 @@ fun LocalDetalheScreen(
                 InfoGrupoCard(titulo = "Identificação do Local") {
                     InfoCampo(rotulo = "Nome do Local", valor = local.nome)
                     InfoCampo(rotulo = "Código / Identificação", valor = local.codigo, copiavel = true)
-                    InfoCampo(rotulo = "Endereço Completo", valor = "Av. Industrial, 1200 - Unidade Principal")
+                    InfoCampo(rotulo = "Endereço Completo", valor = local.endereco.orEmpty())
                 }
             }
 
@@ -132,7 +134,7 @@ fun LocalDetalheScreen(
                         InfoCampo("Setores Registrados", "${local.setoresVinculados} setores", Modifier.weight(1f))
                         InfoCampo("Total de Dispositivos", "${local.equipamentosVinculados} equipamentos", Modifier.weight(1f))
                     }
-                    InfoCampo(rotulo = "Responsável Operacional", valor = "Carlos Eduardo (Gestão)")
+                    InfoCampo(rotulo = "Responsável Operacional", valor = local.responsavel.orEmpty())
                 }
             }
         }

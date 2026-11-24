@@ -1,6 +1,5 @@
 package com.example.watt_vision_mobile.ui.screens.dashboard.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -18,18 +17,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.watt_vision_mobile.ui.components.WattVisionHeaderShortcut
+import com.example.watt_vision_mobile.ui.components.WattVisionScreenHeader
 import com.example.watt_vision_mobile.ui.components.filtros.*
 import com.example.watt_vision_mobile.ui.screens.dashboard.DashboardFilterState
 import com.example.watt_vision_mobile.ui.screens.dashboard.ChartCatalog
-import com.example.watt_vision_mobile.ui.screens.dashboard.ChartLogic
 import com.example.watt_vision_mobile.ui.theme.*
 
 // ==========================================
@@ -40,7 +42,7 @@ import com.example.watt_vision_mobile.ui.theme.*
 // ex: GET /api/equipamentos?search=query&page=page&limit=20
 // ==========================================
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DashboardHeaderAndFilters(
     filters: DashboardFilterState,
@@ -67,132 +69,69 @@ fun DashboardHeaderAndFilters(
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
-        // Cabeçalho superior padrão limpo
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        WattVisionScreenHeader(
+            title = "Dashboard",
+            subtitle = "Monitoramento Energético em Tempo Real"
         ) {
-            Column(modifier = Modifier.weight(1f, fill = false)) {
-                Text(
-                    text = "Dashboard",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextWhite,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "Monitoramento Energético em Tempo Real",
-                    fontSize = 11.sp,
-                    color = TextMuted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clickable { onAlarmesClick() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = SurfaceDark,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "Alarmes recentes",
-                                tint = TextMuted,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clickable { onConfiguracoesClick() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = SurfaceDark,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Configurações do sistema",
-                                tint = TextMuted,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-            }
+            WattVisionHeaderShortcut(Icons.Filled.Notifications, "Alarmes recentes", onAlarmesClick)
+            Spacer(Modifier.width(8.dp))
+            WattVisionHeaderShortcut(Icons.Filled.Settings, "Configurações do sistema", onConfiguracoesClick)
         }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Barra compacta de status e botão "Filtros" com Badge (Sticky ao rolar)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = InputBackground,
-                border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable { onRefreshClick() }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Atualizar dados",
-                        tint = LinkBlue,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = lastUpdatedText,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TextWhite,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            val medir = rememberTextMeasurer()
+            val estiloStatus = LocalTextStyle.current.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            val estiloFiltro = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            val empilhar = with(LocalDensity.current) {
+                val larguraFiltro = medir.measure("Filtros", estiloFiltro, softWrap = false).size.width.toDp() +
+                    50.dp + if (filters.activeCount > 0) 26.dp else 0.dp
+                // Reserve the refresh icon, both paddings and the gap between controls.
+                val larguraStatus = (maxWidth - larguraFiltro - 54.dp).roundToPx().coerceAtLeast(1)
+                medir.measure(lastUpdatedText, estiloStatus, constraints = Constraints(maxWidth = larguraStatus))
+                    .lineCount > 2
             }
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = InputBackground,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
+                    modifier = Modifier
+                        .then(if (empilhar) Modifier.fillMaxWidth() else Modifier.weight(1f))
+                        .align(Alignment.CenterVertically)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onRefreshClick() }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Atualizar dados",
+                            tint = LinkBlue,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = lastUpdatedText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextWhite
+                        )
+                    }
+                }
 
-            BotaoFiltros(filters.activeCount) {
-                draftFilters = filters
-                isFilterSheetOpen = true
+                BotaoFiltros(filters.activeCount, Modifier.align(Alignment.CenterVertically)) {
+                    draftFilters = filters
+                    isFilterSheetOpen = true
+                }
             }
         }
 
@@ -204,29 +143,6 @@ fun DashboardHeaderAndFilters(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                if (filters.period != "Hoje") {
-                    item {
-                        InputChip(
-                            selected = true,
-                            onClick = { onRemoveFilter("period") },
-                            label = { Text("Período: ${filters.period}", fontSize = 11.sp) },
-                            trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Remover filtro Período ${filters.period}",
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            },
-                            colors = InputChipDefaults.inputChipColors(
-                                containerColor = SurfaceDark,
-                                selectedContainerColor = SurfaceDark,
-                                labelColor = TextWhite,
-                                selectedLabelColor = TextWhite,
-                                trailingIconColor = TextMuted
-                            )
-                        )
-                    }
-                }
                 if (filters.location != "Todos") {
                     item {
                         InputChip(
@@ -303,38 +219,14 @@ fun DashboardHeaderAndFilters(
     // Modal Bottom Sheet Principal
     if (isFilterSheetOpen) {
         PainelFiltros(
+            abrirExpandido = true,
             onDismiss = { isFilterSheetOpen = false },
-            onClear = { draftFilters = DashboardFilterState() },
+            onClear = { draftFilters = DashboardFilterState(period = filters.period, metric = filters.metric) },
             onApply = {
                 onFilterChanged(draftFilters)
                 isFilterSheetOpen = false
             }
         ) {
-            // 1. Período: FilterChips em fluxo
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(text = "Período", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSubtle)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ChartLogic.periods.forEach { periodOpt ->
-                        val isSelected = draftFilters.period == periodOpt
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { draftFilters = draftFilters.copy(period = periodOpt) },
-                            label = { Text(periodOpt, fontSize = 11.sp) },
-                            modifier = Modifier.heightIn(min = 48.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = InputBackground,
-                                selectedContainerColor = PrimaryBlue.copy(alpha = 0.25f),
-                                labelColor = TextMuted,
-                                selectedLabelColor = PrimaryBlue
-                            )
-                        )
-                    }
-                }
-            }
-
             // 2. Seletor de Local (FiltroLinhaSeletor)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Local", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSubtle)
@@ -524,7 +416,7 @@ fun PreviewDashboardHeaderWithoutFilters() {
 fun PreviewDashboardHeaderWithActiveFilters() {
     WattVisionTheme {
         DashboardHeaderAndFilters(
-            filters = DashboardFilterState(period = "7 dias", location = "Planta Industrial Jandira", sector = "Produção"),
+            filters = DashboardFilterState(location = "Planta Industrial Jandira", sector = "Produção"),
             lastUpdatedText = "Atualizado às 10:28",
             onFilterChanged = {},
             onRefreshClick = {},

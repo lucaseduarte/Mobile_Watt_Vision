@@ -24,14 +24,6 @@ data class AlarmData(
     val type: AlarmType
 )
 
-data class EnergeticMetricData(
-    val title: String,
-    val value: String,
-    val detail: String,
-    val iconName: String
-)
-
-
 data class ComposicaoItem(
     val id: String,
     val entidade: String,
@@ -46,15 +38,15 @@ data class DashboardFilterState(
     val equipment: String = "Todos",
     val locationId: Int? = null,
     val sectorId: Int? = null,
-    val equipmentId: Int? = null
+    val equipmentId: Int? = null,
+    val metric: ChartMetric = ChartMetric.VOLTAGE
 ) : java.io.Serializable {
     val isDefault: Boolean
-        get() = period == "Hoje" && location == "Todos" && sector == "Todos" && equipment == "Todos"
+        get() = activeCount == 0
 
     val activeCount: Int
         get() {
             var count = 0
-            if (period != "Hoje") count++
             if (location != "Todos") count++
             if (sector != "Todos") count++
             if (equipment != "Todos") count++
@@ -64,17 +56,16 @@ data class DashboardFilterState(
 
 data class DashboardUiState(
     val isLoading: Boolean = false,
+    val simulated: Boolean = false,
     val summaryCards: List<StatCardData> = emptyList(),
-    val selectedMetric: String = "tensao", // tensao, consumo, potencia, corrente
     val selectedChartPeriod: String = "Hoje",
     val chartPoints: List<MedicaoPoint> = emptyList(),
     val chart: ChartState = ChartState(),
     val chartCatalog: ChartCatalog? = null,
-    val alarms: List<AlarmData> = emptyList(),
-    val indicadores: List<EnergeticMetricData> = emptyList(),
+    val alarms: List<AlarmData>? = null,
     val composicaoItems: List<ComposicaoItem> = emptyList(),
     val isComposicaoModalOpen: Boolean = false,
-    val lastUpdatedText: String = "Atualizado às 10:28",
+    val lastUpdatedText: String = "Consultas de negócio suspensas",
     val filters: DashboardFilterState = DashboardFilterState(),
     val errorMessage: String? = null
 )

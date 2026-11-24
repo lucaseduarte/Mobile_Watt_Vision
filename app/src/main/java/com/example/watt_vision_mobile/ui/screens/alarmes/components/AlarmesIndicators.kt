@@ -11,29 +11,58 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.watt_vision_mobile.ui.screens.alarmes.AlarmesCounts
+import com.example.watt_vision_mobile.ui.screens.dashboard.components.CardComSombreamentoDashboard
 import com.example.watt_vision_mobile.ui.theme.*
 
 @Composable
 fun AlarmesIndicators(counts: AlarmesCounts?) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            AlarmesIndicator("Alarmes Ativos", counts?.ativos, "Ativos e reconhecidos", Icons.Default.Notifications, ToneBlueText, Modifier.weight(1f).fillMaxHeight())
-            AlarmesIndicator("Críticos", counts?.criticos, "Requerem ação imediata", Icons.Default.Error, ToneRedText, Modifier.weight(1f).fillMaxHeight())
+    BoxWithConstraints {
+        val medir = rememberTextMeasurer()
+        val larguraTexto = (maxWidth - 10.dp) / 2 - 28.dp
+        val empilhar = with(LocalDensity.current) {
+            medir.measure("acompanhamento", TextStyle(fontSize = 10.sp), softWrap = false)
+                .size.width > larguraTexto.toPx()
         }
-        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            AlarmesIndicator("Atenção", counts?.atencao, "Alarmes em acompanhamento", Icons.Default.Warning, ToneYellowText, Modifier.weight(1f).fillMaxHeight())
-            AlarmesIndicator("Resolvidos", counts?.resolvidos, "Total recebido da API", Icons.Default.CheckCircle, ToneGreenText, Modifier.weight(1f).fillMaxHeight())
+        val ativos: @Composable (Modifier) -> Unit = {
+            AlarmesIndicator("Alarmes Ativos", counts?.ativos, "Ativos e reconhecidos", Icons.Default.Notifications, ToneBlueText, it)
+        }
+        val criticos: @Composable (Modifier) -> Unit = {
+            AlarmesIndicator("Críticos", counts?.criticos, "Requerem ação imediata", Icons.Default.Error, ToneRedText, it)
+        }
+        val atencao: @Composable (Modifier) -> Unit = {
+            AlarmesIndicator("Atenção", counts?.atencao, "Alarmes em acompanhamento", Icons.Default.Warning, ToneYellowText, it)
+        }
+        val resolvidos: @Composable (Modifier) -> Unit = {
+            AlarmesIndicator("Resolvidos", counts?.resolvidos, "Total recebido da API", Icons.Default.CheckCircle, ToneGreenText, it)
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (empilhar) {
+                listOf(ativos, criticos, atencao, resolvidos).forEach { it(Modifier.fillMaxWidth()) }
+            } else {
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ativos(Modifier.weight(1f).fillMaxHeight())
+                    criticos(Modifier.weight(1f).fillMaxHeight())
+                }
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    atencao(Modifier.weight(1f).fillMaxHeight())
+                    resolvidos(Modifier.weight(1f).fillMaxHeight())
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun AlarmesIndicator(label: String, value: Int?, detail: String, icon: ImageVector, tone: Color, modifier: Modifier) {
-    Surface(modifier, shape = RoundedCornerShape(16.dp), color = CardBackground, border = BorderStroke(1.dp, CardBorder)) {
+    CardComSombreamentoDashboard(modifier = modifier, fundo = Color(0xFF111827), borda = Color(0xFF1E293B)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             AlarmeIcon(icon, tone)
             Text(value?.toString() ?: "—", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = TextWhite)

@@ -14,7 +14,7 @@ class SerieMedicoesTest {
     private val inicio = Instant.parse("2026-11-19T11:00:00Z")
 
     private fun leitura(minuto: Long, valor: Any?, id: Int = minuto.toInt(), ponto: Int = 1) = MedicaoDto(
-        id_medicao = id,
+        id_medicao = id.toLong(),
         id_ponto_medicao = ponto,
         data_hora = inicio.plusSeconds(minuto * 60).toString(),
         tensaoRaw = valor,

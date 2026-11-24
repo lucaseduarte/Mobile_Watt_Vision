@@ -1,5 +1,6 @@
 package com.example.watt_vision_mobile.ui.screens.operacional
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,7 +31,8 @@ fun SetorDetalheScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val consumoStr = String.format(Locale.getDefault(), "%.1f kWh", setor.consumoAcumuladoKwh)
+    BackHandler(onBack = onBackClick)
+    val consumoStr = setor.consumoAcumuladoKwh?.let { String.format(Locale.getDefault(), "%.1f kWh", it) } ?: "—"
 
     val sampleAlarmes = listOf(
         AlertaDetalheItem(
@@ -87,7 +89,7 @@ fun SetorDetalheScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "${setor.codigo}  ·  Local: ${setor.localNome}",
+                            text = "${setor.codigo}  ·  Local: ${setor.localNome}  ·  Dados simulados",
                             fontSize = 11.sp,
                             color = TextMuted,
                             maxLines = 1,
@@ -119,7 +121,7 @@ fun SetorDetalheScreen(
 
             // Seção de Alarmes do Setor
             item {
-                AlarmesSecao(alarmes = sampleAlarmes)
+                AlarmesSecao(alarmes = sampleAlarmes.takeIf { setor.id == "1-1" }.orEmpty())
             }
 
             // Identificação
@@ -138,7 +140,7 @@ fun SetorDetalheScreen(
                         InfoCampo("Dispositivos Vinculados", "${setor.equipamentosVinculados} equipamentos", Modifier.weight(1f))
                         InfoCampo("Consumo Periódico", consumoStr, Modifier.weight(1f))
                     }
-                    InfoCampo(rotulo = "Responsável Técnico", valor = "João Pedro (Operações)")
+                    InfoCampo(rotulo = "Responsável Técnico", valor = setor.responsavel.orEmpty())
                 }
             }
         }

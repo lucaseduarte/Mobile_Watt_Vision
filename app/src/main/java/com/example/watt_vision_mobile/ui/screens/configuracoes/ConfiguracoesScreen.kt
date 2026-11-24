@@ -1,7 +1,6 @@
 package com.example.watt_vision_mobile.ui.screens.configuracoes
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,40 +14,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.watt_vision_mobile.model.UsuarioDto
+import com.example.watt_vision_mobile.ui.components.WattVisionScreenHeader
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.components.InfoGrupoCard
 import com.example.watt_vision_mobile.ui.theme.*
-import com.example.watt_vision_mobile.util.DateFormatter
-import java.util.Locale
 
 @Composable
 fun ConfiguracoesScreen(
     viewModel: ConfiguracoesViewModel,
+    carregarConta: suspend () -> UsuarioDto?,
     onBackClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLogout: (() -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = DarkBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(DarkBackground)
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = onBackClick,
-                        modifier = Modifier.size(48.dp)
-                    ) {
+            WattVisionScreenHeader(
+                title = "Configurações do Sistema",
+                subtitle = "Informações gerais e usuários",
+                leadingAction = {
+                    IconButton(onClick = onBackClick, modifier = Modifier.size(48.dp)) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Fechar configurações",
@@ -56,28 +48,8 @@ fun ConfiguracoesScreen(
                             modifier = Modifier.size(22.dp)
                         )
                     }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Configurações do Sistema",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextWhite,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "Informações gerais, tarifas, usuários e pontos de medição",
-                            fontSize = 11.sp,
-                            color = TextMuted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
                 }
-            }
+            )
         }
     ) { innerPadding ->
         Column(
@@ -87,9 +59,7 @@ fun ConfiguracoesScreen(
         ) {
             val tabs = listOf(
                 Triple(0, "Geral", Icons.Default.Settings),
-                Triple(1, "Tarifas", Icons.Default.Bolt),
-                Triple(2, "Usuários", Icons.Default.People),
-                Triple(3, "Pontos de Medição", Icons.Default.Place)
+                Triple(1, "Usuários", Icons.Default.People)
             )
 
             PrimaryScrollableTabRow(
@@ -119,7 +89,7 @@ fun ConfiguracoesScreen(
                                     text = title,
                                     fontSize = 12.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) PrimaryBlue else TextMuted
+                                    color = if (isSelected) ToneBlueText else TextSecondary
                                 )
                             }
                         },
@@ -135,9 +105,7 @@ fun ConfiguracoesScreen(
             ) {
                 when (uiState.activeTab) {
                     0 -> AbaGeral(uiState = uiState, viewModel = viewModel)
-                    1 -> AbaTarifas(uiState = uiState)
-                    2 -> AbaUsuarios(uiState = uiState)
-                    else -> AbaPontosMedicao(uiState = uiState)
+                    1 -> AbaUsuarios(uiState = uiState, carregarConta = carregarConta, onLogout = onLogout)
                 }
             }
         }
@@ -147,6 +115,7 @@ fun ConfiguracoesScreen(
 // ==========================================
 // 1. ABA GERAL (Com Informações do Sistema + Aparência)
 // ==========================================
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AbaGeral(
     uiState: ConfiguracoesUiState,
@@ -180,19 +149,26 @@ fun AbaGeral(
 
                     HorizontalDivider(color = CardBorder, thickness = 1.dp)
 
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(text = "Unidade de energia", fontSize = 12.sp, color = TextMuted)
+                        Text(
+                            text = "Unidade de energia",
+                            modifier = Modifier.align(Alignment.CenterVertically),
+                            fontSize = 12.sp,
+                            color = TextMuted
+                        )
                         Surface(
+                            modifier = Modifier.align(Alignment.CenterVertically),
                             shape = RoundedCornerShape(8.dp),
                             color = InputBackground,
                             border = BorderStroke(1.dp, CardBorder)
                         ) {
                             Text(
                                 text = "kWh (FIXO)",
+                                softWrap = false,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = ToneCyanText,
@@ -256,181 +232,40 @@ fun AbaGeral(
 }
 
 // ==========================================
-// 2. ABA TARIFAS (Com Exibição de Data Final)
+// 2. ABA USUÁRIOS (Visual do Header, Badges Admin/Gestor e Controles de Seleção)
 // ==========================================
 @Composable
-fun AbaTarifas(
-    uiState: ConfiguracoesUiState
+private fun AbaUsuarios(
+    uiState: ConfiguracoesUiState,
+    carregarConta: suspend () -> UsuarioDto?,
+    onLogout: (() -> Unit)?
 ) {
-    val vigente = remember(uiState.tarifas) {
-        uiState.tarifas.firstOrNull { it.ativa }
+    var meuUsuario by remember { mutableStateOf<UsuarioItem?>(null) }
+    var contaConsultada by remember { mutableStateOf(false) }
+    var mostrarPerfil by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        meuUsuario = carregarConta()?.let { conta ->
+            UsuarioItem(
+                id = requireNotNull(conta.id).toLong(),
+                nome = conta.nome?.takeIf { it.isNotBlank() } ?: "Nome não informado",
+                email = requireNotNull(conta.email),
+                perfil = conta.perfil?.takeIf { it.isNotBlank() } ?: "Não informado",
+                local = "Não informado",
+                status = conta.status?.takeIf { it.isNotBlank() } ?: "Não informado"
+            )
+        }
+        contaConsultada = true
     }
-
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // Card Tarifa Ativa
-        item {
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = SurfaceDark,
-                border = BorderStroke(1.dp, CardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(text = "Tarifa Ativa", fontSize = 12.sp, color = TextMuted)
-                        if (vigente != null) {
-                            Surface(
-                                shape = RoundedCornerShape(20.dp),
-                                color = ToneGreenText.copy(alpha = 0.15f),
-                                border = BorderStroke(1.dp, ToneGreenText)
-                            ) {
-                                Text(
-                                    text = "Vigente",
-                                    fontSize = 10.sp,
-                                    color = ToneGreenText,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    if (vigente != null) {
-                        val inicioFmt = DateFormatter.formatIsoDate(vigente.inicio, uiState.geral.formatoData)
-                        val fimFmt = if (vigente.fim.isNotBlank()) DateFormatter.formatIsoDate(vigente.fim, uiState.geral.formatoData) else "Atual (Sem data final)"
-
-                        Text(
-                            text = String.format(Locale.getDefault(), "R$ %.2f / kWh", vigente.valor),
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = ToneCyanText
-                        )
-                        Text(
-                            text = vigente.descricao,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextWhite
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.DateRange, contentDescription = null, tint = TextMuted, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Vigência: $inicioFmt  ➔  $fimFmt",
-                                fontSize = 11.sp,
-                                color = TextMuted
-                            )
-                        }
-                    } else {
-                        Text(
-                            text = "Nenhuma tarifa ativa cadastrada.",
-                            fontSize = 13.sp,
-                            color = TextMuted
-                        )
-                    }
-                }
-            }
-        }
-
-        // Histórico de Tarifas
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Histórico de Tarifas",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextWhite
-                    )
-                    Text(
-                        text = "Valores cadastrados por período de vigência",
-                        fontSize = 11.sp,
-                        color = TextMuted
-                    )
-                }
-
-            }
-        }
-
-        // Formulário de Tarifa
-
-        if (uiState.tarifas.isEmpty()) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "Nenhuma tarifa cadastrada.", fontSize = 13.sp, color = TextMuted)
-                }
-            }
-        } else {
-            items(uiState.tarifas, key = { it.id }) { tarifa ->
-                val inicioFmt = DateFormatter.formatIsoDate(tarifa.inicio, uiState.geral.formatoData)
-                val fimFmt = if (tarifa.fim.isNotBlank()) DateFormatter.formatIsoDate(tarifa.fim, uiState.geral.formatoData) else "atual"
-
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = SurfaceDark,
-                    border = BorderStroke(1.dp, CardBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = tarifa.descricao, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = String.format(Locale.getDefault(), "R$ %.2f / kWh", tarifa.valor),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = ToneCyanText
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Vigência: $inicioFmt a $fimFmt",
-                                fontSize = 11.sp,
-                                color = TextMuted
-                            )
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-
-                        }
-                    }
-                }
-            }
-        }
+    val exemplo = remember { perfilDemonstracao() }
+    var demonstracaoAtiva by remember { mutableStateOf(false) }
+    val demonstracao = demonstracaoAtiva && meuUsuario == null && exemplo != null
+    val conta = meuUsuario ?: exemplo.takeIf { demonstracao }
+    val usuarios = remember(uiState.usuarios, conta) {
+        if (conta == null) uiState.usuarios
+        else listOf(conta) + uiState.usuarios.filterNot { it.email.equals(conta.email, ignoreCase = true) }
     }
-}
-
-// ==========================================
-// 3. ABA USUÁRIOS (Visual do Header, Badges Admin/Gestor e Controles de Seleção)
-// ==========================================
-@Composable
-fun AbaUsuarios(
-    uiState: ConfiguracoesUiState
-) {
-    val admins = remember(uiState.usuarios) { uiState.usuarios.count { it.perfil == "Administrador" } }
-    val gestores = remember(uiState.usuarios) { uiState.usuarios.count { it.perfil == "Gestor" } }
+    val admins = usuarios.count { it.perfil.equals("Administrador", ignoreCase = true) }
+    val gestores = usuarios.count { it.perfil.equals("Gestor", ignoreCase = true) }
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -462,7 +297,7 @@ fun AbaUsuarios(
                                 color = TextWhite
                             )
                             Text(
-                                text = "${uiState.usuarios.size} cadastrados ( $admins Admin · $gestores Gestores )",
+                                text = "${usuarios.size} cadastrados ( $admins Admin · $gestores Gestores )",
                                 fontSize = 11.sp,
                                 color = TextMuted
                             )
@@ -473,12 +308,34 @@ fun AbaUsuarios(
             }
         }
 
-        items(uiState.usuarios, key = { it.id }) { user ->
+        if (contaConsultada && meuUsuario == null) {
+            item("conta-indisponivel") {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (demonstracao) {
+                        Text("DEBUG · DADOS SIMULADOS", fontSize = 12.sp, color = ToneYellowText)
+                    } else {
+                        Text("Meu perfil requer uma sessão autenticada.", fontSize = 12.sp, color = TextMuted)
+                    }
+                    if (exemplo != null) {
+                        OutlinedButton(onClick = { demonstracaoAtiva = !demonstracaoAtiva }) {
+                            Text(if (demonstracao) "Sair da demonstração" else "Ver demonstração de Meu perfil")
+                        }
+                    }
+                }
+            }
+        }
+
+        items(usuarios, key = { if (it === conta) "conta-atual" else "usuario-${it.id}" }) { user ->
+            val contaAtual = user === conta
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = SurfaceDark,
                 border = BorderStroke(1.dp, CardBorder),
                 modifier = Modifier.fillMaxWidth()
+                    .then(
+                        if (contaAtual) Modifier.clickable(onClickLabel = "Abrir Meu perfil") { mostrarPerfil = true }
+                        else Modifier
+                    )
             ) {
                 Row(
                     modifier = Modifier.padding(14.dp),
@@ -516,6 +373,7 @@ fun AbaUsuarios(
                         }
 
                         Text(text = user.email, fontSize = 11.sp, color = TextMuted)
+                        if (contaAtual) Text("Minha conta", fontSize = 11.sp, color = ToneBlueText)
                         Text(text = "Local: ${user.local}", fontSize = 11.sp, color = TextSubtle)
 
                         // Destaque para o Último Acesso com Ícone de Relógio
@@ -556,85 +414,13 @@ fun AbaUsuarios(
             }
         }
     }
-}
 
-// ==========================================
-// 4. ABA PONTOS DE MEDIÇÃO (Com Seletor de Escopo, Modelo e Status Melhorado)
-// ==========================================
-@Composable
-fun AbaPontosMedicao(
-    uiState: ConfiguracoesUiState
-) {
-    val totalAtivos = remember(uiState.pontosMedicao) { uiState.pontosMedicao.count { it.ativo } }
-    val totalInativos = remember(uiState.pontosMedicao) { uiState.pontosMedicao.size - totalAtivos }
-
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxSize()
-    ) {
-        item {
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = SurfaceDark,
-                border = BorderStroke(1.dp, CardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .padding(14.dp)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "Pontos de Medição", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-                        Text(text = "${uiState.pontosMedicao.size} pontos ($totalAtivos ativos · $totalInativos inativos)", fontSize = 11.sp, color = TextMuted)
-                    }
-
-                }
-            }
-        }
-
-        items(uiState.pontosMedicao, key = { it.id }) { ponto ->
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = SurfaceDark,
-                border = BorderStroke(1.dp, CardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = ponto.nome, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-                        Text(text = "${ponto.dispositivo}  ·  Modelo: ${ponto.modelo}", fontSize = 11.sp, color = TextMuted)
-                        Text(text = "Escopo: ${ponto.escopo} (${ponto.entidade})", fontSize = 10.sp, color = TextSubtle)
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (ponto.ativo) ToneGreenBg else ToneRedBg,
-                            border = BorderStroke(1.dp, if (ponto.ativo) ToneGreenText else ToneRedText)
-                        ) {
-                            Text(
-                                text = if (ponto.ativo) "Ativo" else "Inativo",
-                                fontSize = 10.sp,
-                                color = if (ponto.ativo) ToneGreenText else ToneRedText,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                            )
-                        }
-
-                    }
-                }
-            }
-        }
+    if (mostrarPerfil && conta != null) {
+        MeuPerfilSheet(
+            conta,
+            demonstracao = demonstracao,
+            onLogout = onLogout,
+            onFechar = { mostrarPerfil = false }
+        )
     }
 }

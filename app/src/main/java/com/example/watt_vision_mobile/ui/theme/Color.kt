@@ -12,6 +12,7 @@ val SurfaceDark = Color(0xFF0D151F)
 val PrimaryBlue = Color(0xFF2B66C6)
 val TextWhite = Color(0xFFFFFFFF)
 val TextMuted = Color(0xFF6B7B94)
+val TextSecondary = Color(0xFF94A3B8)
 val TextSubtle = Color(0xFFAFB5BA)
 val LinkBlue = Color(0xFF3B82F6)
 

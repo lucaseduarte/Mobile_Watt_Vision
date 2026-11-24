@@ -2,9 +2,12 @@ package com.example.watt_vision_mobile.model
 
 import com.google.gson.annotations.SerializedName
 
+internal const val LIMITE_REGISTROS_SERIE_TEMPORAL = 10_000
+internal const val AVISO_LIMITE_SERIE_TEMPORAL = "Limite de 10.000 registros atingido. A série pode estar incompleta."
+
 data class MedicaoDto(
     @SerializedName(value = "id_medicao", alternate = ["id"])
-    val id_medicao: Int? = null,
+    val id_medicao: Long? = null,
     
     val id_pzem: Int? = null,
     val id_ponto_medicao: Int? = null,

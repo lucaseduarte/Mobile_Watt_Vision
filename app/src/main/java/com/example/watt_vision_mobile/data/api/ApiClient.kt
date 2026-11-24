@@ -1,41 +1,46 @@
 package com.example.watt_vision_mobile.data.api
 
 import android.content.Context
-import com.example.watt_vision_mobile.data.TokenManager
+import com.example.watt_vision_mobile.BuildConfig
+import com.example.watt_vision_mobile.data.repository.AuthRepository
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-    private const val BASE_URL = "http://10.107.144.6:3000/"
+    // Retrofit exige uma URL mesmo quando o Debug está sem servidor configurado.
+    private const val DISABLED_BASE_URL = "https://watt-vision.invalid/"
 
     private var retrofitInstance: Retrofit? = null
 
+    @Synchronized
     fun getRetrofit(context: Context): Retrofit {
         if (retrofitInstance == null) {
-            val tokenManager = TokenManager(context.applicationContext)
-            val authInterceptor = AuthInterceptor(tokenManager)
+            val app = context.applicationContext
+            val authInterceptor = AuthInterceptor(
+                currentCredential = { AuthRepository.getInstance(app).currentCredential() },
+                rejectIfCurrent = { AuthRepository.getInstance(app).rejectIfCurrent(it) },
+                localSeriesEnabled = BuildConfig.LOCAL_SERIES_ENABLED
+            )
 
-            // HttpLoggingInterceptor configured securely for development:
-            // - Redacts sensitive headers like Authorization to prevent token exposure in logs.
-            val logging = HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
-                redactHeader("Authorization")
-                redactHeader("Cookie")
-            }
-
+            val baseUrl = BuildConfig.API_BASE_URL
             val client = OkHttpClient.Builder()
+                .apply {
+                    if (baseUrl.isEmpty()) {
+                        addInterceptor { throw IOException("API Debug desativada. Configure wattVisionDebugApiUrl.") }
+                    }
+                }
                 .addInterceptor(authInterceptor)
-                .addInterceptor(logging)
+                .followRedirects(false)
                 .connectTimeout(5, TimeUnit.SECONDS)
                 .readTimeout(5, TimeUnit.SECONDS)
                 .writeTimeout(5, TimeUnit.SECONDS)
                 .build()
 
             retrofitInstance = Retrofit.Builder()
-                .baseUrl(BASE_URL)
+                .baseUrl(baseUrl.ifEmpty { DISABLED_BASE_URL })
                 .client(client)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()

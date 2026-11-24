@@ -83,7 +83,7 @@ internal fun TabelaDadosBrutos(consulta: ConsultaMedicoes, metrica: ChartMetric)
                 )
             }
 
-            GradeDadosBrutos(linhas, metrica)
+            GradeDadosBrutos(linhas, metrica, consulta.zona)
             if (total == 0) {
                 val mensagem = when {
                     consulta.carregandoRegistros -> "Carregando dados brutos…"
@@ -106,14 +106,13 @@ internal fun TabelaDadosBrutos(consulta: ConsultaMedicoes, metrica: ChartMetric)
 }
 
 @Composable
-private fun GradeDadosBrutos(linhas: List<RegistroMedicao>, metrica: ChartMetric) {
+private fun GradeDadosBrutos(linhas: List<RegistroMedicao>, metrica: ChartMetric, zona: ZoneId) {
     val densidade = LocalDensity.current
     val escalaFonte = densidade.fontScale.coerceAtLeast(1f)
     val colunas = ColunaBruta.entries
     val larguraTotal = colunas.fold(0.dp) { total, coluna -> total + coluna.largura * escalaFonte }
     val ativa = colunas.single { it.metrica == metrica }
     val rolagem = rememberScrollState()
-    val zona = ZoneId.systemDefault()
     val data = remember(zona) { DateTimeFormatter.ofPattern("dd/MM/yyyy", localeMedicoes).withZone(zona) }
     val hora = remember(zona) { DateTimeFormatter.ofPattern("HH:mm:ss", localeMedicoes).withZone(zona) }
 

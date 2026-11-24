@@ -7,18 +7,25 @@ import androidx.lifecycle.viewModelScope
 import com.example.watt_vision_mobile.data.repository.MockOperacionalRepository
 import com.example.watt_vision_mobile.data.repository.OperacionalRepository
 import com.example.watt_vision_mobile.util.StringNormalization
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class OperacionalViewModel(
+class OperacionalViewModel internal constructor(
     application: Application,
-    private val savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle,
+    private val repository: OperacionalRepository
 ) : AndroidViewModel(application) {
 
-    private val repository: OperacionalRepository = MockOperacionalRepository()
+    constructor(application: Application, savedStateHandle: SavedStateHandle) :
+        this(application, savedStateHandle, MockOperacionalRepository())
+
+    private var loadJob: Job? = null
 
     private val _uiState = MutableStateFlow(OperacionalUiState())
     val uiState: StateFlow<OperacionalUiState> = _uiState.asStateFlow()
@@ -43,22 +50,24 @@ class OperacionalViewModel(
     }
 
     fun loadData() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                val eqList = repository.getEquipamentos()
-                val stList = repository.getSetores()
-                val lcList = repository.getLocais()
-
+                val catalogo = repository.carregar()
+                ensureActive()
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        equipamentos = eqList,
-                        setores = stList,
-                        locais = lcList
+                        equipamentos = catalogo.equipamentos,
+                        setores = catalogo.setores,
+                        locais = catalogo.locais
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
+                ensureActive()
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -67,6 +76,12 @@ class OperacionalViewModel(
                 }
             }
         }
+    }
+
+    override fun onCleared() {
+        loadJob?.cancel()
+        _uiState.value = OperacionalUiState()
+        super.onCleared()
     }
 
     fun setActiveTab(index: Int) {

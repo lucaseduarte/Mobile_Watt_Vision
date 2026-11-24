@@ -12,7 +12,7 @@ class RegistrosMedicoesTest {
         val zona = ZoneId.of("America/Sao_Paulo")
         val janela = janelaMedicoes("Hoje", ZonedDateTime.parse("2026-11-19T12:00:00-03:00"))
         fun leitura(id: Int, data: String, ponto: Int = 1) =
-            MedicaoDto(id_medicao = id, data_hora = data, id_ponto_medicao = ponto)
+            MedicaoDto(id_medicao = id.toLong(), data_hora = data, id_ponto_medicao = ponto)
 
         val primeira = leitura(1, "2026-11-19 08:59:59")
         val segunda = leitura(2, "2026-11-19T12:00:00Z")
@@ -23,7 +23,7 @@ class RegistrosMedicoesTest {
         )
 
         val registros = montarRegistros(linhas, janela, zona, setOf(1))
-        assertEquals(listOf(3, 2, 1), registros.map { it.dados.id_medicao })
+        assertEquals(listOf(3L, 2L, 1L), registros.map { it.dados.id_medicao })
         assertEquals(registros[0].tempo, registros[1].tempo)
     }
 

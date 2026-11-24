@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.watt_vision_mobile.ui.screens.dashboard.StatCardData
@@ -96,70 +95,9 @@ fun StatCardItem(card: StatCardData) {
         else -> Icons.Default.Memory
     }
 
-    // Container principal do card com sombra, cantos arredondados, fundo e borda de 1px (#1B2A40)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 142.dp)
-            .shadow(
-                elevation = 2.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = Color.Black.copy(alpha = 0.32f),
-                ambientColor = Color.Black.copy(alpha = 0.32f)
-            )
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF0C141F))
-            .border(1.dp, Color(0xFF1B2A40), RoundedCornerShape(16.dp))
+    CardComSombreamentoDashboard(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 142.dp)
     ) {
-        // Camada 1: Gradiente azul interno superior (rgba(36,73,130,0.13) -> rgba(15,27,44,0.05) -> transparent)
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF244982).copy(alpha = 0.13f),
-                            Color(0xFF0F1B2C).copy(alpha = 0.05f),
-                            Color.Transparent
-                        ),
-                        startY = 0f,
-                        endY = 140f
-                    )
-                )
-        )
-
-        // Camada 2: Reflexo azul difuso no canto superior esquerdo (#2856A0 com 7-14% opacidade)
-        Box(
-            modifier = Modifier
-                .size(130.dp, 90.dp)
-                .offset(x = (-32).dp, y = (-48).dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFF2856A0).copy(alpha = 0.14f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
-
-        // Camada 3: Linha de brilho inferior com gradiente horizontal (#31558A com 30% opacidade no centro)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .height(1.dp)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color(0xFF31558A).copy(alpha = 0.3f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
-
         // Camada 4: Conteúdo do Card
         Column(
             modifier = Modifier
@@ -213,9 +151,7 @@ fun StatCardItem(card: StatCardData) {
                 text = card.value,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextWhite,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                color = TextWhite
             )
 
             // Rótulo principal
@@ -223,9 +159,7 @@ fun StatCardItem(card: StatCardData) {
                 text = card.label,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextSubtle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                color = TextSubtle
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -234,11 +168,82 @@ fun StatCardItem(card: StatCardData) {
             Text(
                 text = card.detail,
                 fontSize = 10.sp,
-                color = TextMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                color = TextMuted
             )
         }
+    }
+}
+
+@Composable
+internal fun CardComSombreamentoDashboard(
+    modifier: Modifier = Modifier,
+    shape: RoundedCornerShape = RoundedCornerShape(16.dp),
+    fundo: Color = Color(0xFF0C141F),
+    borda: Color = Color(0xFF1B2A40),
+    content: @Composable BoxScope.() -> Unit
+) {
+    Box(
+        modifier = modifier
+            .shadow(
+                elevation = 2.dp,
+                shape = shape,
+                spotColor = Color.Black.copy(alpha = 0.32f),
+                ambientColor = Color.Black.copy(alpha = 0.32f)
+            )
+            .clip(shape)
+            .background(fundo)
+            .border(1.dp, borda, shape)
+    ) {
+        // Camada 1: Gradiente azul interno superior (rgba(36,73,130,0.13) -> rgba(15,27,44,0.05) -> transparent)
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF244982).copy(alpha = 0.13f),
+                            Color(0xFF0F1B2C).copy(alpha = 0.05f),
+                            Color.Transparent
+                        ),
+                        startY = 0f,
+                        endY = 140f
+                    )
+                )
+        )
+
+        // Camada 2: Reflexo azul difuso no canto superior esquerdo (#2856A0 com 7-14% opacidade)
+        Box(
+            modifier = Modifier
+                .size(130.dp, 90.dp)
+                .offset(x = (-32).dp, y = (-48).dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFF2856A0).copy(alpha = 0.14f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        // Camada 3: Linha de brilho inferior com gradiente horizontal (#31558A com 30% opacidade no centro)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .height(1.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color(0xFF31558A).copy(alpha = 0.3f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        content()
     }
 }
 

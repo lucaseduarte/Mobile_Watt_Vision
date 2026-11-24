@@ -67,7 +67,7 @@ internal fun montarSerie(
     zona: ZoneId,
     pontos: Set<Int>?
 ): SerieMedicoes {
-    data class Leitura(val tempo: Instant, val ponto: Int?, val id: Int?, val valor: Double?)
+    data class Leitura(val tempo: Instant, val ponto: Int?, val id: Long?, val valor: Double?)
     val ordenadas = linhas.mapNotNull { linha ->
         val tempo = instanteMedicao(linha.data_hora, zona)?.takeIf(janela::contem) ?: return@mapNotNull null
         val valor = if (pontos == null || linha.id_ponto_medicao in pontos) valorExibidoMedicao(grandeza, linha) else null

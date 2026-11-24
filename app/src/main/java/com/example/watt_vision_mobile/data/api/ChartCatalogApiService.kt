@@ -4,10 +4,32 @@ import com.example.watt_vision_mobile.model.ApiResponse
 import retrofit2.Response
 import retrofit2.http.GET
 
-// Apenas campos públicos necessários para resolver entidade -> ponto -> medidor.
-data class ChartLocalDto(val id: Int?, val nome: String?)
-data class ChartSectorDto(val id: Int?, val nome: String?, val id_local: Int?)
-data class ChartEquipmentDto(val id: Int?, val nome: String?, val id_setor: Int?)
+data class ChartLocalDto(
+    val id: Int?,
+    val nome: String?,
+    val codigo: String? = null,
+    val status: String? = null,
+    val endereco: String? = null,
+    val responsavel: String? = null
+)
+
+data class ChartSectorDto(
+    val id: Int?,
+    val nome: String?,
+    val id_local: Int?,
+    val codigo: String? = null,
+    val status: String? = null,
+    val responsavel: String? = null
+)
+
+data class ChartEquipmentDto(
+    val id: Int?,
+    val nome: String?,
+    val id_setor: Int?,
+    val codigo: String? = null,
+    val status: String? = null,
+    val potencia_nominal: Double? = null
+)
 data class ChartPointDto(val id: Int?, val id_local: Int?, val id_setor: Int?, val id_equipamento: Int?)
 data class ChartSensorDto(val id: Int?, val id_ponto_medicao: Int?)
 

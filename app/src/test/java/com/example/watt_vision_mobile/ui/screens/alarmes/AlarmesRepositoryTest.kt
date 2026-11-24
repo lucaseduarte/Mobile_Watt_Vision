@@ -33,7 +33,7 @@ class AlarmesRepositoryTest {
         var calls = 0
         var onRead: () -> Unit = {}
         var result: Response<ApiResponse<UsuarioDto>> = Response.success(ApiResponse(true, null, UsuarioDto(1, 1, null, null, "Gestor", "Ativo")))
-        override suspend fun getMe(): Response<ApiResponse<UsuarioDto>> { calls++; onRead(); return result }
+        override suspend fun getMe(authorization: String?): Response<ApiResponse<UsuarioDto>> { calls++; onRead(); return result }
         override suspend fun login(request: LoginRequest): Response<LoginResponse> = throw AssertionError("Não deve fazer login automaticamente")
     }
     private fun <T> error(code: Int): Response<T> = Response.error(code, "{}".toResponseBody())

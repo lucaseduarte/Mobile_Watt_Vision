@@ -16,8 +16,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,25 +40,23 @@ fun FiltroSeletorBusca(
     selectedId: String,
     onItemSelected: (String) -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    mostrarBusca: Boolean = true
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var debouncedQuery by rememberSaveable { mutableStateOf("") }
-    val focusRequester = remember { FocusRequester() }
     val listState = rememberLazyListState()
 
     // Debounce de 200ms para busca (preparado também para buscas no servidor/Paging 3)
-    LaunchedEffect(searchQuery) {
-        delay(200)
-        debouncedQuery = searchQuery
+    LaunchedEffect(searchQuery, mostrarBusca) {
+        if (mostrarBusca) {
+            delay(200)
+            debouncedQuery = searchQuery
+        }
     }
 
-    // Foco automático no campo de busca ao abrir
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    val filteredItems = remember(debouncedQuery, items) {
+    val filteredItems = remember(debouncedQuery, items, mostrarBusca) {
+        if (!mostrarBusca) return@remember items
         val queryNormalized = StringNormalization.normalize(debouncedQuery)
         items.filter { item ->
             if (item.id == "Todos" || item.title == "Todos") {
@@ -119,40 +115,39 @@ fun FiltroSeletorBusca(
 
             HorizontalDivider(color = CardBorder, thickness = 1.dp)
 
-            // Campo de Busca Fixo com Foco Automático
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp)
-            ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text("Buscar $titulo...", color = TextMuted, fontSize = 13.sp) },
-                    singleLine = true,
-                    leadingIcon = {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = TextMuted)
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(imageVector = Icons.Default.Clear, contentDescription = "Limpar busca", tint = TextMuted)
-                            }
-                        }
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = InputBackground,
-                        unfocusedContainerColor = InputBackground,
-                        focusedBorderColor = PrimaryBlue,
-                        unfocusedBorderColor = CardBorder,
-                        focusedTextColor = TextWhite,
-                        unfocusedTextColor = TextWhite
-                    ),
-                    shape = RoundedCornerShape(12.dp),
+            if (mostrarBusca) {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .focusRequester(focusRequester)
-                )
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Buscar $titulo...", color = TextMuted, fontSize = 13.sp) },
+                        singleLine = true,
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = TextMuted)
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(imageVector = Icons.Default.Clear, contentDescription = "Limpar busca", tint = TextMuted)
+                                }
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = InputBackground,
+                            unfocusedContainerColor = InputBackground,
+                            focusedBorderColor = PrimaryBlue,
+                            unfocusedBorderColor = CardBorder,
+                            focusedTextColor = TextWhite,
+                            unfocusedTextColor = TextWhite
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
             if (filteredItems.isEmpty()) {

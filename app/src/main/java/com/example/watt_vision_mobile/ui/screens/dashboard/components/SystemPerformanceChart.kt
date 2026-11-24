@@ -139,7 +139,7 @@ fun SystemPerformanceChart(
                 TextButton(onClick = onRetry) { Text("Tentar novamente", fontSize = 11.sp) }
             }
             if (state.stale) Text("Dados desatualizados — última consulta: ${state.updatedAt?.format(ChartLogic.dateTimeFormat).orEmpty()}", color = ToneYellowText, fontSize = 11.sp)
-            if (state.truncated) Text("10.000 registros recebidos: a série pode estar incompleta.", color = ToneYellowText, fontSize = 11.sp)
+            if (state.truncated) Text(com.example.watt_vision_mobile.model.AVISO_LIMITE_SERIE_TEMPORAL, color = ToneYellowText, fontSize = 11.sp)
             if (state.outOfScope > 0) Text("${state.outOfScope} leitura(s) de outros pontos não são exibidas neste filtro.", color = TextMuted, fontSize = 11.sp)
             if (state.invalidTimestamps > 0) Text("${state.invalidTimestamps} registro(s) sem data válida não podem ser posicionados.", color = ToneYellowText, fontSize = 11.sp)
             selectedPoint?.let { point ->

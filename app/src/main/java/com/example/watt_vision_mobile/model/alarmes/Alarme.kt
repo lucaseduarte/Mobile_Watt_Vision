@@ -78,12 +78,21 @@ object AlarmeMapper {
 
 object AlarmeDate {
     private val display = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss", Locale.forLanguageTag("pt-BR"))
-    fun format(raw: String?): String {
+    private val inicio = DateTimeFormatter.ofPattern("dd/MM/yyyy, HH:mm:ss", Locale.forLanguageTag("pt-BR"))
+
+    fun format(raw: String?): String = format(raw, display, incluirOffset = true)
+
+    fun formatarInicio(raw: String?): String = format(raw, inicio, incluirOffset = false)
+
+    private fun format(raw: String?, padrao: DateTimeFormatter, incluirOffset: Boolean): String {
         if (raw.isNullOrBlank()) return "Não informada"
         val normalized = raw.trim().replace(' ', 'T')
         val offset = runCatching { OffsetDateTime.parse(normalized) }.getOrNull()
-        if (offset != null) return "${offset.format(display)} ${offset.offset.id}"
-        return runCatching { LocalDateTime.parse(normalized).format(display) }
+        if (offset != null) {
+            val texto = offset.format(padrao)
+            return if (incluirOffset) "$texto ${offset.offset.id}" else texto
+        }
+        return runCatching { LocalDateTime.parse(normalized).format(padrao) }
             .getOrElse { "Data inválida" }
     }
 }

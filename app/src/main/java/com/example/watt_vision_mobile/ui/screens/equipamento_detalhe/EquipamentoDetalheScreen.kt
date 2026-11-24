@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.watt_vision_mobile.model.alarmes.AlarmeEntidade
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.components.*
+import com.example.watt_vision_mobile.ui.screens.operacional.EquipamentoItem
 import com.example.watt_vision_mobile.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,12 +33,21 @@ fun EquipamentoDetalheScreen(
     viewModel: EquipamentoDetalheViewModel,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
-    entidadeDoAlarme: AlarmeEntidade? = null
+    entidadeDoAlarme: AlarmeEntidade? = null,
+    equipamento: EquipamentoItem? = null
 ) {
     val uiState: EquipamentoDetalheUiState
     val relativeTimeString: String
     if (entidadeDoAlarme == null) {
-        uiState = viewModel.uiState.collectAsStateWithLifecycle().value
+        if (equipamento != null) {
+            DisposableEffect(viewModel, equipamento) {
+                viewModel.abrirEquipamento(equipamento)
+                onDispose { viewModel.fecharEquipamento() }
+            }
+        }
+        val estado by viewModel.uiState.collectAsStateWithLifecycle()
+        uiState = estado.takeIf { it.data == null || it.data.id == equipamento?.id }
+            ?: EquipamentoDetalheUiState()
         relativeTimeString = viewModel.relativeTimeString.collectAsStateWithLifecycle().value
     } else {
         val cadastro by produceState<EquipamentoDetalheData?>(null, entidadeDoAlarme) {
@@ -92,7 +102,7 @@ fun EquipamentoDetalheScreen(
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = uiState.data?.nome ?: entidadeDoAlarme?.nome ?: "Detalhe do Equipamento",
+                            text = uiState.data?.nome ?: equipamento?.nome ?: entidadeDoAlarme?.nome ?: "Detalhe do Equipamento",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextWhite,
@@ -162,7 +172,7 @@ fun EquipamentoDetalheScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Button(
-                                onClick = { viewModel.startPollingAndTimer() },
+                                onClick = viewModel::refreshManually,
                                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                                 modifier = Modifier.heightIn(min = 48.dp)
                             ) {
@@ -192,6 +202,14 @@ fun EquipamentoDetalheScreen(
                                     }
                                 }
                         ) {
+                            if (equipamento != null || entidadeDoAlarme?.demonstracao == true) {
+                                Text(
+                                    "Dados simulados",
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                                    color = TextMuted,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
                             // Aviso discreto de dados desatualizados (STALE) caso haja falha temporária de conexão
                             if (uiState.screenState == ScreenState.STALE && !uiState.errorMessage.isNullOrBlank()) {
                                 Surface(

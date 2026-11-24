@@ -1,141 +1,152 @@
 package com.example.watt_vision_mobile.ui.screens.alarmes.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.watt_vision_mobile.model.alarmes.*
 import com.example.watt_vision_mobile.ui.theme.*
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
-import java.time.Duration
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
 import java.util.Locale
 
-private fun severityColor(severity: AlarmeSeveridade) = when (severity) {
-    AlarmeSeveridade.CRITICO -> ToneRedText
-    AlarmeSeveridade.ATENCAO -> ToneYellowText
-    AlarmeSeveridade.INFORMATIVO -> ToneCyanText
-    AlarmeSeveridade.DESCONHECIDA -> TextSubtle
-}
+private val fundoAlarme = Color(0xFF111827)
+private val bordaAlarme = Color(0xFF1E293B)
+private val textoAlarme = Color(0xFFF1F5F9)
+private val detalheAlarme = Color(0xFF94A3B8)
+private val legendaAlarme = Color(0xFF64748B)
 
 @Composable
 fun AlarmeCard(alarme: Alarme, onClick: () -> Unit) {
-    val resumo = resumoAlarme(alarme)
-    Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
-        color = CardBackground, border = BorderStroke(1.dp, CardBorder)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                val (icon, tone) = when (alarme.severidade) {
-                    AlarmeSeveridade.CRITICO -> Icons.Default.Error to ToneRedText
-                    AlarmeSeveridade.ATENCAO -> Icons.Default.Warning to ToneYellowText
-                    else -> Icons.Default.Info to ToneBlueText
-                }
-                AlarmeIcon(icon, tone)
-                Text(alarme.titulo, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextWhite, modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Icon(Icons.Default.ChevronRight, "Ver detalhes do alarme", tint = TextMuted, modifier = Modifier.size(20.dp))
-            }
-            resumo?.let { Text(it, color = TextSubtle, fontSize = 12.sp) }
+    val resumo = when {
+        alarme.valorDetectado != null || alarme.valorLimite != null -> resumoAlarme(alarme)
+        alarme.titulo.trim().equals("Dispositivo offline", ignoreCase = true) ->
+            "Sem comunicação com o dispositivo"
+        else -> alarme.mensagem?.takeIf { it.isNotBlank() }
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = fundoAlarme,
+        border = BorderStroke(1.dp, bordaAlarme)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+                .clickable(role = Role.Button, onClickLabel = "Ver detalhes do alarme", onClick = onClick)
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             AlarmesBadges(alarme)
-            Text(
-                alarme.nomeEquipamento ?: alarme.dispositivoIotId?.let { "Dispositivo IoT #$it" }
-                    ?: "Equipamento não informado",
-                color = TextSubtle, fontSize = 12.sp
-            )
-            Text(AlarmeDate.format(alarme.dataHora), color = TextMuted, fontSize = 11.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(alarme.titulo, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textoAlarme)
+                resumo?.let { Text(it, fontSize = 13.sp, color = detalheAlarme) }
+            }
+            HorizontalDivider(color = bordaAlarme)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                val origem = alarme.nomeEquipamento ?: alarme.dispositivoIotId?.let { "Dispositivo IoT #$it" }
+                    ?: "Origem não informada"
+                Text("$origem · Local não informado", fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                    color = Color(0xFFCBD5E1))
+                Text(AlarmeDate.formatarInicio(alarme.dataHora), fontSize = 12.sp, color = legendaAlarme)
+            }
         }
     }
 }
 
 @Composable
 private fun resumoAlarme(alarme: Alarme): String? {
-    val mensagem = alarme.mensagem?.takeIf { it.isNotBlank() }
-    if (alarme.titulo.trim().equals("Dispositivo offline", ignoreCase = true) &&
-        (alarme.status == AlarmeStatus.ATIVO || alarme.status == AlarmeStatus.RECONHECIDO)) {
-        val inicio = alarme.dataHora?.trim()?.replace(' ', 'T')
-        val elapsed by produceState(tempoOffline(inicio), inicio) {
-            value = tempoOffline(inicio)
-            while (value != null) {
-                delay(30_000)
-                value = tempoOffline(inicio)
-            }
+    if (alarme.valorDetectado == null && alarme.valorLimite == null) return null
+    val decimal = remember {
+        NumberFormat.getNumberInstance(Locale.forLanguageTag("pt-BR")).apply {
+            isGroupingUsed = false
+            minimumFractionDigits = 3
+            maximumFractionDigits = 3
         }
-        return elapsed ?: mensagem
     }
-    if (alarme.valorDetectado != null || alarme.valorLimite != null ||
-        alarme.titulo.trim().equals("Limite excedido", ignoreCase = true)) {
-        val decimal = remember {
-            NumberFormat.getNumberInstance(Locale.ROOT).apply {
-                isGroupingUsed = false
-                minimumFractionDigits = 3
-                maximumFractionDigits = 3
-            }
-        }
-        val detectado = alarme.valorDetectado?.let(decimal::format) ?: "—"
-        val limite = alarme.valorLimite?.let(decimal::format) ?: "—"
-        return "Valor detectado: $detectado (Limite: $limite)"
-    }
-    return mensagem
-}
-
-private fun tempoOffline(inicio: String?): String? {
-    if (inicio.isNullOrBlank()) return null
-    val duracao = runCatching { Duration.between(OffsetDateTime.parse(inicio), OffsetDateTime.now()) }
-        .recoverCatching { Duration.between(LocalDateTime.parse(inicio), LocalDateTime.now()) }
-        .getOrNull() ?: return null
-    val minutos = duracao.toMinutes().coerceAtLeast(0)
-    return when {
-        minutos < 1 -> "Dispositivo offline há menos de 1 min"
-        minutos < 60 -> "Dispositivo offline há ${minutos} min"
-        minutos < 1440 -> "Dispositivo offline há ${minutos / 60} h ${minutos % 60} min"
-        else -> "Dispositivo offline há ${minutos / 1440} d ${minutos / 60 % 24} h"
-    }
-}
-
-private fun statusColor(status: AlarmeStatus) = when (status) {
-    AlarmeStatus.ATIVO -> ToneBlueText
-    AlarmeStatus.RECONHECIDO, AlarmeStatus.RESOLVIDO -> ToneGreenText
-    AlarmeStatus.DESCONHECIDO -> TextSubtle
+    val detectado = alarme.valorDetectado?.let(decimal::format) ?: "—"
+    val limite = alarme.valorLimite?.let(decimal::format) ?: "—"
+    return "Valor detectado: $detectado (Limite: $limite)"
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AlarmesBadges(alarme: Alarme) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        AlarmeBadge(alarme.severidadeLabel, severityColor(alarme.severidade))
-        AlarmeBadge(alarme.statusLabel, statusColor(alarme.status))
+private fun AlarmesBadges(alarme: Alarme, detalhes: Boolean = false) {
+    val (fundoSeveridade, textoSeveridade) = when (alarme.severidade) {
+        AlarmeSeveridade.CRITICO -> Color(0xFF3B1219) to Color(0xFFF87171)
+        AlarmeSeveridade.ATENCAO -> Color(0xFF33250B) to Color(0xFFFBBF24)
+        AlarmeSeveridade.INFORMATIVO -> ToneCyanBg to ToneCyanText
+        AlarmeSeveridade.DESCONHECIDA -> InputBackground to TextSubtle
+    }
+    val (fundoStatus, textoStatus) = when (alarme.status) {
+        AlarmeStatus.ATIVO -> if (detalhes) bordaAlarme to Color(0xFFCBD5E1) else Color(0xFF1D4ED8) to Color(0xFF93C5FD)
+        AlarmeStatus.RECONHECIDO, AlarmeStatus.RESOLVIDO -> Color(0xFF065F46) to Color(0xFF6EE7B7)
+        AlarmeStatus.DESCONHECIDO -> InputBackground to TextSubtle
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        FlowRow(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            AlarmeBadge("● ${alarme.severidadeLabel}", fundoSeveridade, textoSeveridade)
+            if (!detalhes) when (alarme.categoria) {
+                AlarmeCategoria.ENERGETICO -> AlarmeBadge(
+                    alarme.categoriaLabel, Color(0xFF1E3A8A), Color(0xFF60A5FA), icone = Icons.Filled.Bolt
+                )
+                AlarmeCategoria.COMUNICACAO -> AlarmeBadge(
+                    alarme.categoriaLabel, Color(0xFF064E3B), Color(0xFF34D399), icone = Icons.Filled.Wifi
+                )
+                AlarmeCategoria.DESCONHECIDA -> AlarmeBadge(alarme.categoriaLabel, InputBackground, TextSubtle)
+            }
+        }
+        AlarmeBadge(alarme.statusLabel, fundoStatus, textoStatus, Modifier.widthIn(max = 116.dp))
     }
 }
 
 @Composable
-private fun AlarmeBadge(label: String, color: Color) {
-    Surface(shape = RoundedCornerShape(8.dp), color = color.copy(alpha = .10f), border = BorderStroke(1.dp, color.copy(alpha = .35f))) {
-        Text(label, fontSize = 10.sp, color = color, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
+private fun AlarmeBadge(
+    label: String,
+    fundo: Color,
+    cor: Color,
+    modifier: Modifier = Modifier,
+    icone: ImageVector? = null
+) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(20.dp), color = fundo) {
+        Row(
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (icone != null) Icon(icone, contentDescription = null, modifier = Modifier.size(12.dp), tint = cor)
+            Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = cor)
+        }
     }
 }
 
@@ -159,38 +170,66 @@ fun AlarmeDetailsSheet(
         carregando = false
     }
 
-    val condicao = resumoAlarme(alarme)
+    val condicao = resumoAlarme(alarme) ?: "Sem comunicação com o dispositivo"
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     var abrindoEntidade by remember { mutableStateOf(false) }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = SurfaceDark) {
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        containerColor = fundoAlarme,
+        contentColor = textoAlarme
+    ) {
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp).navigationBarsPadding(),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Detalhes do alarme", color = TextWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Fechar detalhes", tint = TextMuted) }
-            }
-            AlarmesBadges(alarme)
-            Text(alarme.titulo, color = TextWhite, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            AlarmesBadges(alarme, detalhes = true)
+            Text(alarme.titulo, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textoAlarme)
 
-            val alvo = entidade
-            when {
-                carregando -> Text("Carregando vínculo operacional…", color = TextMuted, fontSize = 12.sp)
-                alvo != null -> {
-                    AlarmeField(alvo.tipo.label, alvo.nome)
-                    if (alvo.tipo == AlarmeTipoEntidade.EQUIPAMENTO) AlarmeField("Setor", alvo.setor)
-                    if (alvo.tipo != AlarmeTipoEntidade.LOCAL) AlarmeField("Local", alvo.local)
+            OrigemAlarme(alarme, entidade)
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    "CONDIÇÃO IDENTIFICADA", fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp, color = detalheAlarme
+                )
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF261217),
+                    border = BorderStroke(1.dp, Color(0xFF5C1D24))
+                ) {
+                    Text(
+                        condicao, Modifier.padding(14.dp), fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium, color = Color(0xFFFCA5A5)
+                    )
                 }
-                else -> AlarmeField("Vínculo operacional", null)
             }
 
-            AlarmeField("Condição", condicao)
-            if (alvo != null) {
-                Button(
+            if (alarme.reconhecidoPor != null || !alarme.dataReconhecimento.isNullOrBlank()) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    alarme.reconhecidoPor?.let {
+                        Text("Reconhecido por: usuário #$it", fontSize = 12.sp, color = detalheAlarme)
+                    }
+                    if (!alarme.dataReconhecimento.isNullOrBlank()) {
+                        Text(
+                            "Reconhecido em: ${AlarmeDate.formatarInicio(alarme.dataReconhecimento)}",
+                            fontSize = 12.sp, color = detalheAlarme
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider(color = bordaAlarme)
+            val equipamento = entidade?.takeIf { it.tipo == AlarmeTipoEntidade.EQUIPAMENTO && it.id > 0 }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedButton(
                     onClick = {
+                        val alvo = equipamento ?: return@OutlinedButton
                         abrindoEntidade = true
                         scope.launch {
                             try {
@@ -201,22 +240,47 @@ fun AlarmeDetailsSheet(
                             }
                         }
                     },
-                    enabled = !abrindoEntidade,
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue, contentColor = TextWhite),
+                    enabled = equipamento != null && !carregando && !abrindoEntidade,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, bordaAlarme),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF60A5FA)),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) {
-                    Text("Ver ${alvo.tipo.label.lowercase(Locale.ROOT)}")
+                    Text("Ver Equipamento")
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+                if (carregando || equipamento == null) {
+                    Text(
+                        if (carregando) "Consultando vínculo do equipamento…" else "Nenhum equipamento vinculado disponível.",
+                        fontSize = 12.sp, color = detalheAlarme
+                    )
                 }
             }
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-private fun AlarmeField(label: String, value: String?) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, fontSize = 11.sp, color = TextMuted)
-        Text(value?.takeIf { it.isNotBlank() } ?: "Não informado", color = TextSubtle, fontSize = 13.sp)
+private fun OrigemAlarme(alarme: Alarme, entidade: AlarmeEntidade?) {
+    val nome = alarme.nomeEquipamento ?: entidade?.nome
+        ?: alarme.dispositivoIotId?.let { "Dispositivo IoT #$it" }
+        ?: "Dispositivo não informado"
+    val local = if (entidade?.tipo == AlarmeTipoEntidade.LOCAL) entidade.nome else entidade?.local
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFF0B111E),
+        border = BorderStroke(1.dp, bordaAlarme)
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(nome, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textoAlarme)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Outlined.LocationOn, contentDescription = null,
+                    modifier = Modifier.size(16.dp), tint = Color(0xFFF87171))
+                Text(local?.takeIf { it.isNotBlank() } ?: "Local não informado",
+                    fontSize = 13.sp, color = detalheAlarme)
+            }
+        }
     }
 }

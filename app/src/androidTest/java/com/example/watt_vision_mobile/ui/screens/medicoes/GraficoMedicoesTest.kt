@@ -142,7 +142,7 @@ class GraficoMedicoesTest {
 
     @Test fun demonstracaoSoEntraAposToqueEPodeSerDesativada() {
         val aviso = "Demonstração · Dados simulados"
-        abrir { MedicoesScreen() }.use {
+        abrir { MedicoesScreen(onNavigate = {}) }.use {
             val botao = limites(encontrar("Demonstração"))
             assertNull(procurar(instrumentacao.uiAutomation.rootInActiveWindow, aviso, false))
             gesto(botao.centerX(), botao.centerY())
@@ -162,21 +162,36 @@ class GraficoMedicoesTest {
             RegistroMedicao(
                 data.plusSeconds(i.toLong()),
                 MedicaoDto(
-                    id_medicao = i, tensaoRaw = 220.5 + i, correnteRaw = 5.0,
+                    id_medicao = i.toLong(), tensaoRaw = 220.5 + i, correnteRaw = 5.0,
                     potenciaAtivaRaw = 1234.5, energiaAcumuladaRaw = 15.4, frequenciaRaw = 60.0,
                     fatorPotenciaRaw = .98
                 )
             )
         }
         abrir {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState())) {
                 androidx.compose.runtime.key(escopo.value) {
                     TabelaDadosBrutos(ConsultaMedicoes(registros = registros), grandeza.value)
                 }
             }
         }.use {
+            fun encontrarPrimeiraPagina() {
+                val titulo = "Página 1 de 4"
+                repeat(3) {
+                    val raiz = instrumentacao.uiAutomation.rootInActiveWindow ?: return@repeat
+                    if (procurar(raiz, titulo, false)?.isVisibleToUser == true &&
+                        procurar(raiz, "4", false)?.isVisibleToUser == true
+                    ) return
+                    val tela = limites(raiz)
+                    gesto(tela.centerX(), tela.top + tela.height() * 3 / 4,
+                        tela.centerX(), tela.top + tela.height() / 4)
+                    SystemClock.sleep(400)
+                }
+                assertTrue(encontrar(titulo).isVisibleToUser)
+            }
+
             encontrar("34 registros")
-            encontrar("Página 1 de 4")
+            encontrarPrimeiraPagina()
             val pagina4 = limites(encontrar("4"))
             gesto(pagina4.centerX(), pagina4.centerY())
             encontrar("Página 4 de 4")
@@ -217,7 +232,7 @@ class GraficoMedicoesTest {
             assertNotEquals("Coluna destacada", encontrar("dados-brutos-coluna-DATA", id = true).stateDescription?.toString())
             encontrar("Página 4 de 4")
             instrumentacao.runOnMainSync { escopo.value++ }
-            encontrar("Página 1 de 4")
+            encontrarPrimeiraPagina()
         }
     }
 

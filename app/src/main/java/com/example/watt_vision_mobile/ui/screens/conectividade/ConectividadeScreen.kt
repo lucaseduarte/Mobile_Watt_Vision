@@ -2,16 +2,18 @@ package com.example.watt_vision_mobile.ui.screens.conectividade
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Dns
@@ -29,9 +31,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.watt_vision_mobile.ui.components.WattVisionHeaderShortcut
+import com.example.watt_vision_mobile.ui.components.WattVisionScreenHeader
+import com.example.watt_vision_mobile.ui.screens.dashboard.components.CardComSombreamentoDashboard
 import com.example.watt_vision_mobile.ui.screens.operacional.TabFilterState
 import com.example.watt_vision_mobile.ui.screens.operacional.components.OperacionalFilterBar
 import com.example.watt_vision_mobile.ui.theme.*
@@ -58,7 +67,7 @@ private data class Indicador(
     val fim: Color
 )
 
-private val indicadores = listOf(
+private val modelosIndicadores = listOf(
     Indicador(7, "Total de Dispositivos", "dispositivos cadastrados", Icons.Outlined.Dns,
         Color(0xFF315FAE), Color(0xFF17315F)),
     Indicador(4, "Online", "comunicando normalmente", Icons.Outlined.CheckCircle,
@@ -68,21 +77,6 @@ private val indicadores = listOf(
     Indicador(2, "Offline", "sem comunicação", Icons.Outlined.WifiOff,
         Color(0xFF632632), Color(0xFF2A1822))
 )
-
-internal object DispositivoExemplo {
-    const val codigo = "ESP32-001"
-    const val nome = "ESP32 Usinagem 01"
-    const val status = "Online"
-    const val pontoAtivo = true
-    const val tipo = "ESP32-DevKitC"
-    const val equipamento = "Motor Elétrico WEG 01"
-    const val vinculo = "EQUIPAMENTO · $equipamento"
-    const val local = "Planta Industrial A"
-    const val setor = "Usinagem e Motores"
-    const val comunicacao = "MQTT"
-    const val ultimoContato = "2026-11-19 18:20:46"
-
-}
 
 private data class Evento(
     val dispositivo: String,
@@ -99,76 +93,95 @@ private val filtrosConectividadeSaver = listSaver<TabFilterState, String>(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConectividadeScreen(
+internal fun ConectividadeScreen(
+    viewModel: ConectividadeViewModel,
     onNavigate: (String) -> Unit,
-    onVerDetalhes: () -> Unit,
+    onVerDetalhes: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var filtros by rememberSaveable(stateSaver = filtrosConectividadeSaver) { mutableStateOf(TabFilterState()) }
     var aba by rememberSaveable { mutableStateOf(Aba.STATUS) }
     var periodo by rememberSaveable { mutableStateOf(Periodo.HOJE) }
     val hoje = LocalDate.now()
-    val eventos = remember(hoje) {
-        listOf(Evento("ESP32-006", "Desconectado", hoje, "recente", "—"))
+    val estado by viewModel.estado.collectAsState()
+    val dispositivos = estado.dispositivos
+    val porId = remember(dispositivos) { dispositivos.associateBy { it.id } }
+    val eventos = remember(estado.eventos, porId) {
+        estado.eventos.mapNotNull { evento ->
+            porId[evento.dispositivoId]?.let { dispositivo ->
+                Evento(dispositivo.codigo, evento.evento, evento.momento.toLocalDate(), evento.momento.toLocalTime().toString(), "—")
+            }
+        }
     }
+    val valores = listOf(dispositivos.size, dispositivos.count { it.status == "Online" },
+        dispositivos.count { it.status == "Instável" }, dispositivos.count { it.status == "Offline" })
+    val indicadores = modelosIndicadores.mapIndexed { index, indicador -> indicador.copy(valor = valores[index]) }
     val posicao = rememberLazyListState()
 
     LazyColumn(
         modifier = modifier.fillMaxSize().background(DarkBackground),
         state = posicao,
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item("cabecalho") {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column {
+                WattVisionScreenHeader(
+                    title = "Conectividade",
+                    subtitle = "Gerencie os dispositivos responsáveis pela coleta e transmissão das medições do Watt Vision",
+                    contentPadding = PaddingValues(vertical = 12.dp)
+                ) {
+                    WattVisionHeaderShortcut(Icons.Filled.Notifications, "Alarmes recentes") { onNavigate("Alarmes") }
+                    Spacer(Modifier.width(8.dp))
+                    WattVisionHeaderShortcut(Icons.Filled.Settings, "Configurações do sistema") { onNavigate("Configurações") }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Conectividade", modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = TextWhite, fontWeight = FontWeight.Bold
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AtalhoConectividade(Icons.Filled.Notifications, "Alarmes recentes") { onNavigate("Alarmes") }
-                        AtalhoConectividade(Icons.Filled.Settings, "Configurações do sistema") { onNavigate("Configurações") }
+                    Text("Dados simulados", style = MaterialTheme.typography.labelMedium, color = ToneBlueText)
+                    IconButton(onClick = viewModel::atualizar, enabled = !estado.carregando) {
+                        Icon(Icons.Default.Refresh, "Atualizar conectividade", tint = ToneBlueText)
                     }
                 }
-                Text("Gerencie os dispositivos responsáveis pela coleta e transmissão das medições do Watt Vision",
-                    style = MaterialTheme.typography.bodySmall, color = TextSubtle)
-                Text("Dados de exemplo", style = MaterialTheme.typography.labelMedium, color = ToneBlueText)
+                if (estado.carregando) LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (estado.erro) {
+                    Text("Falha ao atualizar a conectividade simulada.", color = TextSubtle)
+                    TextButton(onClick = viewModel::atualizar) { Text("Tentar novamente") }
+                }
             }
         }
         item("indicadores") {
-            Column(
-                modifier = Modifier.height(IntrinsicSize.Min),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                indicadores.chunked(2).forEach { linha ->
-                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        linha.forEach { indicador ->
-                            IndicadorCard(indicador, Modifier.weight(1f).fillMaxHeight())
+            BoxWithConstraints {
+                val typography = MaterialTheme.typography
+                val medir = rememberTextMeasurer()
+                val larguraTexto = (maxWidth - 12.dp) / 2 - 28.dp
+                val empilhar = with(LocalDensity.current) {
+                    indicadores.any { indicador ->
+                        indicador.titulo.split(' ').any {
+                            medir.measure(it, typography.titleSmall, softWrap = false).size.width > larguraTexto.toPx()
+                        } || indicador.descricao.split(' ').any {
+                            medir.measure(it, typography.bodySmall, softWrap = false).size.width > larguraTexto.toPx()
+                        }
+                    }
+                }
+                Column(
+                    modifier = if (empilhar) Modifier else Modifier.height(IntrinsicSize.Min),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (empilhar) {
+                        indicadores.forEach { IndicadorCard(it) }
+                    } else {
+                        indicadores.chunked(2).forEach { linha ->
+                            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                linha.forEach { indicador ->
+                                    IndicadorCard(indicador, Modifier.weight(1f).fillMaxHeight())
+                                }
+                            }
                         }
                     }
                 }
             }
         }
         item("abas") {
-            PrimaryTabRow(
-                selectedTabIndex = aba.ordinal,
-                containerColor = DarkBackground,
-                contentColor = ToneBlueText,
-                divider = { HorizontalDivider(color = CardBorder) }
-            ) {
-                Aba.entries.forEach { opcao ->
-                    Tab(selected = aba == opcao, onClick = { aba = opcao }) {
-                        Text(
-                            opcao.titulo,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 10.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                    }
-                }
-            }
+            AbasConectividade(aba) { aba = it }
         }
         when (aba) {
             Aba.STATUS -> {
@@ -189,34 +202,26 @@ fun ConectividadeScreen(
                                 else -> filtros
                             }
                         },
-                        locaisList = listOf(DispositivoExemplo.local),
-                        setoresList = listOf(DispositivoExemplo.setor to DispositivoExemplo.local),
+                        locaisList = dispositivos.map { it.local }.filter { it.isNotBlank() }.distinct(),
+                        setoresList = dispositivos.filter { it.setor.isNotBlank() }.map { it.setor to it.local }.distinct(),
                         searchPlaceholder = "Pesquisar dispositivo ou código...",
                         contentPadding = PaddingValues(vertical = 8.dp),
                         statusOptions = listOf("Todos", "Online", "Offline"),
                         equipamentosPorFiltro = { rascunho ->
-                            listOf(DispositivoExemplo.equipamento).filter {
-                                correspondeAoLocalESetor(rascunho)
-                            }
+                            dispositivos.filter { it.correspondeAoLocalESetor(rascunho) }
+                                .map { it.equipamento }.filter { it.isNotBlank() }.distinct()
                         }
                     )
                 }
-                item("dispositivo") {
-                    val termo = filtros.searchQuery.trim()
-                    val corresponde = DispositivoExemplo.codigo.contains(termo, ignoreCase = true) ||
-                        DispositivoExemplo.nome.contains(termo, ignoreCase = true)
-                    val statusCorresponde = filtros.statusFilter == "Todos" ||
-                        filtros.statusFilter == DispositivoExemplo.status
-                    val equipamentoCorresponde = filtros.equipmentFilter == "Todos" ||
-                        filtros.equipmentFilter == DispositivoExemplo.equipamento
-                    if (corresponde && statusCorresponde && correspondeAoLocalESetor(filtros) && equipamentoCorresponde) {
-                        DispositivoCard(onDetalhes = onVerDetalhes)
-                    } else {
-                        Painel {
-                            Text("Nenhum dispositivo encontrado.", color = TextSubtle)
-                            TextButton(onClick = { filtros = TabFilterState() }) {
-                                Text("Limpar busca e filtros", color = ToneBlueText)
-                            }
+                val visiveis = dispositivos.filter { it.corresponde(filtros) }
+                items(visiveis, key = { it.id }) { dispositivo ->
+                    DispositivoCard(dispositivo) { onVerDetalhes(dispositivo.id) }
+                }
+                if (visiveis.isEmpty() && !estado.carregando && !estado.erro) item("dispositivo-vazio") {
+                    Painel {
+                        Text("Nenhum dispositivo encontrado.", color = TextSubtle)
+                        if (dispositivos.isNotEmpty()) TextButton(onClick = { filtros = TabFilterState() }) {
+                            Text("Limpar busca e filtros", color = ToneBlueText)
                         }
                     }
                 }
@@ -256,45 +261,72 @@ fun ConectividadeScreen(
 
 }
 
-private fun correspondeAoLocalESetor(filtros: TabFilterState): Boolean =
-    (filtros.locationFilter == "Todos" || filtros.locationFilter == DispositivoExemplo.local) &&
-        (filtros.sectorFilter == "Todos" || filtros.sectorFilter == DispositivoExemplo.setor)
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AtalhoConectividade(icone: ImageVector, descricao: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier.size(48.dp).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Surface(
-            modifier = Modifier.size(38.dp),
-            shape = RoundedCornerShape(10.dp),
-            color = SurfaceDark,
-            border = BorderStroke(1.dp, CardBorder)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(icone, descricao, Modifier.size(18.dp), tint = TextMuted)
+private fun AbasConectividade(aba: Aba, selecionar: (Aba) -> Unit) {
+    BoxWithConstraints {
+        val estilo = MaterialTheme.typography.labelMedium
+        val medir = rememberTextMeasurer()
+        val larguraTexto = maxWidth / Aba.entries.size - 8.dp
+        val precisaRolar = with(LocalDensity.current) {
+            Aba.entries.any { opcao ->
+                opcao.titulo.split(' ').any {
+                    medir.measure(it, estilo, softWrap = false).size.width > larguraTexto.toPx()
+                }
             }
+        }
+        val abas: @Composable () -> Unit = {
+            Aba.entries.forEach { opcao ->
+                Tab(selected = aba == opcao, onClick = { selecionar(opcao) }) {
+                    Text(
+                        opcao.titulo,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 10.dp),
+                        style = estilo,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
+        }
+        val divisor: @Composable () -> Unit = { HorizontalDivider(color = CardBorder) }
+        if (precisaRolar) {
+            PrimaryScrollableTabRow(
+                selectedTabIndex = aba.ordinal,
+                containerColor = DarkBackground,
+                contentColor = ToneBlueText,
+                edgePadding = 0.dp,
+                divider = divisor,
+                tabs = abas
+            )
+        } else {
+            PrimaryTabRow(
+                selectedTabIndex = aba.ordinal,
+                containerColor = DarkBackground,
+                contentColor = ToneBlueText,
+                divider = divisor,
+                tabs = abas
+            )
         }
     }
 }
 
 @Composable
 private fun IndicadorCard(indicador: Indicador, modifier: Modifier = Modifier) {
-    Painel(modifier) {
-        IconeComFundo(indicador.icone, indicador.inicio, indicador.fim, Color(0xFFD0D8E2))
-        Text(indicador.valor.toString(), style = MaterialTheme.typography.headlineSmall,
-            color = TextWhite, fontWeight = FontWeight.Bold)
-        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(indicador.titulo, style = MaterialTheme.typography.titleSmall, color = TextWhite)
-            Text(indicador.descricao, style = MaterialTheme.typography.bodySmall, color = TextSubtle)
+    CardComSombreamentoDashboard(modifier = modifier.fillMaxWidth(), fundo = CardBackground, borda = CardBorder) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            IconeComFundo(indicador.icone, indicador.inicio, indicador.fim, Color(0xFFD0D8E2))
+            Text(indicador.valor.toString(), style = MaterialTheme.typography.headlineSmall,
+                color = TextWhite, fontWeight = FontWeight.Bold)
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(indicador.titulo, style = MaterialTheme.typography.titleSmall, color = TextWhite)
+                Text(indicador.descricao, style = MaterialTheme.typography.bodySmall, color = TextSubtle)
+            }
         }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DispositivoCard(onDetalhes: () -> Unit) {
+private fun DispositivoCard(dispositivo: DispositivoConectividade, onDetalhes: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = CardBackground,
@@ -302,14 +334,29 @@ private fun DispositivoCard(onDetalhes: () -> Unit) {
         border = BorderStroke(1.dp, CardBorder)
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            DispositivoCabecalho()
+            DispositivoCabecalho(dispositivo)
             HorizontalDivider(color = CardBorder)
-            AtributoDispositivo("Local e setor", "${DispositivoExemplo.local} › ${DispositivoExemplo.setor}")
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                AtributoDispositivo("Tipo", DispositivoExemplo.tipo, Modifier.weight(1f))
-                AtributoDispositivo("Comunicação", DispositivoExemplo.comunicacao, Modifier.weight(1f))
+            AtributoDispositivo("Local e setor", listOf(dispositivo.local, dispositivo.setor).filter { it.isNotBlank() }.joinToString(" › ").ifEmpty { "—" })
+            BoxWithConstraints {
+                val medir = rememberTextMeasurer()
+                val larguraCampo = (maxWidth - 12.dp) / 2
+                val empilhar = with(LocalDensity.current) {
+                    medir.measure("Comunicação", MaterialTheme.typography.bodyLarge.copy(fontSize = 12.sp, letterSpacing = 0.2.sp),
+                        softWrap = false).size.width > larguraCampo.toPx()
+                }
+                if (empilhar) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        AtributoDispositivo("Tipo", dispositivo.tipo)
+                        AtributoDispositivo("Comunicação", dispositivo.comunicacao)
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        AtributoDispositivo("Tipo", dispositivo.tipo, Modifier.weight(1f))
+                        AtributoDispositivo("Comunicação", dispositivo.comunicacao, Modifier.weight(1f))
+                    }
+                }
             }
-            AtributoDispositivo("Relacionado a", DispositivoExemplo.vinculo)
+            AtributoDispositivo("Relacionado a", dispositivo.vinculo)
             HorizontalDivider(color = CardBorder)
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
@@ -318,7 +365,7 @@ private fun DispositivoCard(onDetalhes: () -> Unit) {
                 itemVerticalAlignment = Alignment.CenterVertically
             ) {
                 AtributoDispositivo(
-                    "Último contato", DispositivoExemplo.ultimoContato, Modifier.padding(end = 12.dp)
+                    "Último contato", dispositivo.ultimoContato, Modifier.padding(end = 12.dp)
                 )
                 TextButton(
                     onClick = onDetalhes,
@@ -336,28 +383,27 @@ private fun DispositivoCard(onDetalhes: () -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DispositivoCabecalho() {
+private fun DispositivoCabecalho(dispositivo: DispositivoConectividade) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
             Text(
-                DispositivoExemplo.codigo,
+                dispositivo.codigo,
                 modifier = Modifier.weight(1f),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextWhite
             )
-            Selo(DispositivoExemplo.status, ToneGreenText, ToneGreenBg)
+            val (cor, fundo) = coresConexao(dispositivo.status)
+            Selo(dispositivo.status, cor, fundo)
         }
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
             itemVerticalAlignment = Alignment.CenterVertically
         ) {
-            Text(DispositivoExemplo.nome, fontSize = 14.sp, color = TextSubtle)
-            if (DispositivoExemplo.pontoAtivo) {
-                Selo("• Ponto ativo", ToneGreenText, ToneGreenBg.copy(alpha = 0.6f))
-            } else {
-                Selo("• Ponto inativo", ToneRedText, ToneRedBg)
+            Text(dispositivo.nome, fontSize = 14.sp, color = TextSubtle)
+            if (dispositivo.equipamento.isNotBlank()) {
+                Selo("• Vínculo simulado", ToneBlueText, ToneBlueBg)
             }
         }
     }
@@ -384,14 +430,15 @@ private fun HistoricoTabela(eventos: List<Evento>, hoje: LocalDate) {
         if (eventos.isEmpty()) {
             Text("Nenhum evento neste período.", color = TextSubtle)
         } else {
-            val largura = colunasHistorico.fold(0.dp) { total, (_, coluna) -> total + coluna }
+            val larguras = largurasHistorico(eventos, hoje)
+            val largura = larguras.fold(0.dp) { total, coluna -> total + coluna }
             Box(Modifier.horizontalScroll(rememberScrollState())) {
                 Column(Modifier.width(largura)) {
                     Row(verticalAlignment = Alignment.Bottom) {
                         colunasHistorico.forEachIndexed { index, (rotulo, _) ->
                             Text(
                                 text = rotulo,
-                                modifier = celulaHistorico(index).padding(bottom = 5.dp),
+                                modifier = celulaHistorico(larguras[index]).padding(bottom = 5.dp),
                                 fontSize = 15.sp,
                                 lineHeight = 18.sp,
                                 fontWeight = FontWeight.SemiBold,
@@ -401,7 +448,7 @@ private fun HistoricoTabela(eventos: List<Evento>, hoje: LocalDate) {
                     }
                     eventos.forEach { evento ->
                         HorizontalDivider(color = CardBorder)
-                        LinhaHistorico(evento, hoje)
+                        LinhaHistorico(evento, hoje, larguras)
                     }
                 }
             }
@@ -410,31 +457,70 @@ private fun HistoricoTabela(eventos: List<Evento>, hoje: LocalDate) {
 }
 
 @Composable
-private fun LinhaHistorico(evento: Evento, hoje: LocalDate) {
+private fun largurasHistorico(eventos: List<Evento>, hoje: LocalDate): List<Dp> {
+    val medir = rememberTextMeasurer()
+    val densidade = LocalDensity.current
+    val texto = LocalTextStyle.current
+    val cabecalho = texto.copy(fontSize = 15.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
+    val valor = texto.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    val horario = texto.copy(fontSize = 12.sp)
+    val selo = MaterialTheme.typography.labelMedium
+
+    return remember(eventos, hoje, medir, densidade, cabecalho, valor, horario, selo) {
+        with(densidade) {
+            fun larguraDoTexto(conteudo: String, estilo: TextStyle): Int =
+                conteudo.splitToSequence(' ', '\n', '\t')
+                    .filter { it.isNotEmpty() }
+                    .maxOfOrNull { medir.measure(it, estilo, softWrap = false).size.width } ?: 0
+
+            // Keep the original widths as minimums and leave natural breaks between words.
+            val paddingCelula = 12.dp.roundToPx()
+            val paddingSelo = 2 * 10.dp.roundToPx()
+            val larguras = colunasHistorico.map { (rotulo, minima) ->
+                maxOf(minima.roundToPx(), larguraDoTexto(rotulo, cabecalho) + paddingCelula)
+            }.toMutableList()
+
+            fun acomodar(coluna: Int, conteudo: String, estilo: TextStyle, padding: Int = 0) {
+                larguras[coluna] = maxOf(larguras[coluna], larguraDoTexto(conteudo, estilo) + paddingCelula + padding)
+            }
+
+            eventos.forEach { evento ->
+                acomodar(0, evento.dispositivo, valor)
+                acomodar(1, "•\u00A0${evento.evento}", selo, padding = paddingSelo)
+                acomodar(2, if (evento.data == hoje) "Hoje" else evento.data.toString(), valor)
+                acomodar(2, evento.horario, horario)
+                acomodar(3, evento.duracao, valor)
+            }
+            larguras.map { it.toDp() }
+        }
+    }
+}
+
+@Composable
+private fun LinhaHistorico(evento: Evento, hoje: LocalDate, larguras: List<Dp>) {
     val reconectado = evento.evento.equals("Reconectado", ignoreCase = true) ||
         evento.evento.equals("Conectado", ignoreCase = true)
     Row(
         modifier = Modifier.padding(top = 6.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TextoHistorico(evento.dispositivo, celulaHistorico(0))
-        Box(celulaHistorico(1)) {
+        TextoHistorico(evento.dispositivo, celulaHistorico(larguras[0]))
+        Box(celulaHistorico(larguras[1])) {
             Selo(
                 texto = "• ${evento.evento}",
                 cor = if (reconectado) ToneGreenText else ToneYellowText,
                 fundo = if (reconectado) ToneGreenBg else ToneYellowBg
             )
         }
-        Column(celulaHistorico(2), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(celulaHistorico(larguras[2]), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             TextoHistorico(if (evento.data == hoje) "Hoje" else evento.data.toString())
             Text(evento.horario, fontSize = 12.sp, color = Color(0xFF8E96A4))
         }
-        TextoHistorico(evento.duracao, celulaHistorico(3))
+        TextoHistorico(evento.duracao, celulaHistorico(larguras[3]))
     }
 }
 
-private fun celulaHistorico(indice: Int) =
-    Modifier.width(colunasHistorico[indice].second).padding(end = 12.dp)
+private fun celulaHistorico(largura: Dp) = Modifier.width(largura).padding(end = 12.dp)
 
 @Composable
 private fun TextoHistorico(texto: String, modifier: Modifier = Modifier) {
@@ -519,4 +605,11 @@ private fun Selo(texto: String, cor: Color, fundo: Color) {
         Text(texto, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelMedium, color = cor)
     }
+}
+
+internal fun coresConexao(status: String): Pair<Color, Color> = when (status) {
+    "Online" -> ToneGreenText to ToneGreenBg
+    "Offline" -> ToneRedText to ToneRedBg
+    "Instável" -> ToneYellowText to ToneYellowBg
+    else -> TextSubtle to InputBackground
 }

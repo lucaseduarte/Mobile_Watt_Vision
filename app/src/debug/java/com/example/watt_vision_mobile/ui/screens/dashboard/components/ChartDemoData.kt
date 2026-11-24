@@ -17,7 +17,7 @@ object ChartDemoData {
         val rows = List(120) { index ->
             val sample = index % voltage.size
             MedicaoDto(
-                id_medicao = index, id_pzem = -1, id_ponto_medicao = -1,
+                id_medicao = index.toLong(), id_pzem = -1, id_ponto_medicao = -1,
                 data_hora = period.start.plusSeconds(seconds * index / 120).toString(),
                 tensaoRaw = if (index in 48..49) null else voltage[sample],
                 correnteRaw = if (index in 48..49) null else current[sample],

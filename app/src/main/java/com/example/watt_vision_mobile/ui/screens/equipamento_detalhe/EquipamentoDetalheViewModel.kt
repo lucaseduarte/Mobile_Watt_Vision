@@ -2,7 +2,6 @@ package com.example.watt_vision_mobile.ui.screens.equipamento_detalhe
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.example.watt_vision_mobile.data.api.ApiClient
 import com.example.watt_vision_mobile.data.api.WattVisionApiService
@@ -10,7 +9,10 @@ import com.example.watt_vision_mobile.data.repository.EquipamentoCadastroReposit
 import com.example.watt_vision_mobile.data.repository.EquipamentoDetalheRepository
 import com.example.watt_vision_mobile.model.alarmes.AlarmeEntidade
 import com.example.watt_vision_mobile.data.repository.MockEquipamentoDetalheRepository
+import com.example.watt_vision_mobile.ui.screens.operacional.EquipamentoItem
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,8 +26,7 @@ import java.util.Locale
 import kotlin.math.min
 
 class EquipamentoDetalheViewModel(
-    application: Application,
-    private val savedStateHandle: SavedStateHandle
+    application: Application
 ) : AndroidViewModel(application) {
 
     private val repository: EquipamentoDetalheRepository = MockEquipamentoDetalheRepository()
@@ -47,20 +48,30 @@ class EquipamentoDetalheViewModel(
     private var timerJob: Job? = null
     private var currentBackoffMs = 5000L
 
-    val equipamentoId: String
-        get() = savedStateHandle.get<String>(KEY_EQUIPAMENTO_ID) ?: "1"
+    private var equipamentoSelecionado: EquipamentoItem? = null
 
-    init {
+    internal fun abrirEquipamento(equipamento: EquipamentoItem) {
+        fecharEquipamento()
+        equipamentoSelecionado = equipamento
         startPollingAndTimer()
     }
 
-    fun setEquipamentoId(id: String) {
-        if (equipamentoId != id) _uiState.value = EquipamentoDetalheUiState()
-        savedStateHandle[KEY_EQUIPAMENTO_ID] = id
-        startPollingAndTimer()
+    internal fun fecharEquipamento() {
+        pollingJob?.cancel()
+        timerJob?.cancel()
+        equipamentoSelecionado = null
+        currentBackoffMs = 5000L
+        _uiState.value = EquipamentoDetalheUiState()
+        _relativeTimeString.value = "há poucos segundos"
     }
 
-    fun startPollingAndTimer() {
+    override fun onCleared() {
+        fecharEquipamento()
+        super.onCleared()
+    }
+
+    private fun startPollingAndTimer() {
+        val equipamento = equipamentoSelecionado ?: return
         pollingJob?.cancel()
         timerJob?.cancel()
 
@@ -68,7 +79,7 @@ class EquipamentoDetalheViewModel(
         pollingJob = viewModelScope.launch {
             var isFirst = true
             while (isActive) {
-                fetchData(isInitial = isFirst)
+                fetchData(equipamento, isInitial = isFirst)
                 isFirst = false
                 delay(currentBackoffMs)
             }
@@ -86,22 +97,20 @@ class EquipamentoDetalheViewModel(
     }
 
     fun refreshManually() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true) }
-            currentBackoffMs = 5000L // Reseta backoff ao forçar atualização
-            fetchData(isInitial = false)
-            _uiState.update { it.copy(isRefreshing = false) }
-        }
+        if (equipamentoSelecionado == null) return
+        _uiState.update { it.copy(isRefreshing = true) }
+        currentBackoffMs = 5000L
+        startPollingAndTimer()
     }
 
-    private suspend fun fetchData(isInitial: Boolean) {
+    private suspend fun fetchData(equipamento: EquipamentoItem, isInitial: Boolean) {
         if (isInitial && _uiState.value.data == null) {
             _uiState.update { it.copy(screenState = ScreenState.INITIAL_LOADING) }
         }
 
-        val id = equipamentoId
-        val result = repository.getDetalheEquipamento(id)
-        if (id != equipamentoId) return
+        val result = repository.getDetalheEquipamento(equipamento)
+        currentCoroutineContext().ensureActive()
+        _uiState.update { it.copy(isRefreshing = false) }
 
         if (result.isSuccess) {
             val newData = result.getOrNull()
@@ -167,7 +176,4 @@ class EquipamentoDetalheViewModel(
         _relativeTimeString.value = text
     }
 
-    companion object {
-        private const val KEY_EQUIPAMENTO_ID = "selected_equipamento_id"
-    }
 }

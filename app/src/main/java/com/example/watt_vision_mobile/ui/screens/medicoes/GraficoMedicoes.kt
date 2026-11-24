@@ -96,7 +96,7 @@ internal fun GraficoMedicoes(
                 }
             }
             if (total > 0) {
-                PlotMedicoes(consulta.serie, grandeza.label, unidade, corCurva)
+                PlotMedicoes(consulta.serie, grandeza.label, unidade, corCurva, consulta.zona)
             } else {
                 Box(Modifier.fillMaxWidth().height(186.dp), contentAlignment = Alignment.Center) {
                     if (consulta.carregando) {
@@ -128,14 +128,14 @@ private data class TrechoPlot(val inicio: AmostraMedicao, val seguintes: List<Pa
 private data class ParcelaPlot(val fim: AmostraMedicao, val curva: ControlesMonotonicos)
 
 @Composable
-private fun PlotMedicoes(serie: SerieMedicoes, grandeza: String, unidade: String, corCurva: Color) {
+private fun PlotMedicoes(serie: SerieMedicoes, grandeza: String, unidade: String, corCurva: Color, zona: ZoneId) {
     val amostras = serie.amostras
     val inicio = amostras.first().tempo
     val fim = amostras.last().tempo
     val escala = remember(serie) { escalaMedicoes(amostras) }
     val segundos = Duration.between(inicio, fim).let { it.seconds + it.nano / 1e9 }
-    val formatador = remember {
-        formatoEixoMedicoes.withZone(ZoneId.systemDefault())
+    val formatador = remember(zona) {
+        formatoEixoMedicoes.withZone(zona)
     }
     val medir = rememberTextMeasurer()
     val density = LocalDensity.current
@@ -286,7 +286,7 @@ private fun PlotMedicoes(serie: SerieMedicoes, grandeza: String, unidade: String
                     val tooltipWidth = minOf(156.dp, larguraVisivel)
                     val pos = with(density) { visivelX.toDp() }
                     val esquerda = (pos - tooltipWidth / 2).coerceIn(0.dp, larguraVisivel - tooltipWidth)
-                    TooltipMedicao(amostra, grandeza, unidade, Modifier.offset(x = esquerda).width(tooltipWidth))
+                    TooltipMedicao(amostra, grandeza, unidade, zona, Modifier.offset(x = esquerda).width(tooltipWidth))
                 }
             }
         }
@@ -294,9 +294,9 @@ private fun PlotMedicoes(serie: SerieMedicoes, grandeza: String, unidade: String
 }
 
 @Composable
-private fun TooltipMedicao(amostra: AmostraMedicao, grandeza: String, unidade: String, modifier: Modifier) {
-    val dataHora = remember {
-        DateTimeFormatter.ofPattern("dd/MM/yyyy · HH:mm:ss", localeMedicoes).withZone(ZoneId.systemDefault())
+private fun TooltipMedicao(amostra: AmostraMedicao, grandeza: String, unidade: String, zona: ZoneId, modifier: Modifier) {
+    val dataHora = remember(zona) {
+        DateTimeFormatter.ofPattern("dd/MM/yyyy · HH:mm:ss", localeMedicoes).withZone(zona)
     }
     val forma = RoundedCornerShape(8.dp)
     Column(

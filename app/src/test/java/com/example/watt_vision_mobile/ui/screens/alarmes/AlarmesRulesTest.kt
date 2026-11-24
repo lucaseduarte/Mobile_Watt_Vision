@@ -75,6 +75,7 @@ class AlarmesRulesTest {
         assertEquals("17/11/2026 12:30:00 Z", AlarmeDate.format("2026-11-17T12:30:00Z"))
         assertEquals("Não informada", AlarmeDate.format(null))
         assertEquals("Data inválida", AlarmeDate.format("texto inválido"))
+        assertEquals("19/11/2026, 18:05:46", AlarmeDate.formatarInicio("2026-11-19T18:05:46-03:00"))
     }
 
     @Test fun unavailableMeasurementsAreNotZero() {

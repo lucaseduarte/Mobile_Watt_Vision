@@ -16,10 +16,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.watt_vision_mobile.model.alarmes.*
+import com.example.watt_vision_mobile.ui.components.WattVisionScreenHeader
 import com.example.watt_vision_mobile.ui.screens.alarmes.components.*
 import com.example.watt_vision_mobile.ui.theme.*
 
@@ -47,13 +47,17 @@ fun AlarmesContent(
     LaunchedEffect(state.records) {
         selected = selected?.let { old -> state.records.firstOrNull { it.id != null && it.id == old.id } }
     }
-    LazyColumn(modifier.fillMaxSize().background(DarkBackground).imePadding(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize().background(DarkBackground).imePadding(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
         item {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Alarmes", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-                    Text("Consulta e acompanhamento", fontSize = 12.sp, color = TextMuted)
-                }
+            WattVisionScreenHeader(
+                title = "Alarmes",
+                subtitle = "Consulta e acompanhamento",
+                contentPadding = PaddingValues(top = 12.dp)
+            ) {
                 IconButton(onClick = onRefresh, enabled = !state.isRefreshing, modifier = Modifier.size(48.dp)) {
                     Icon(Icons.Default.Refresh, "Atualizar alarmes", tint = if (state.isRefreshing) TextMuted else ToneBlueText)
                 }
@@ -63,7 +67,7 @@ fun AlarmesContent(
         item { AlarmesIndicators(counts) }
         item {
             OutlinedTextField(value = state.filters.query, onValueChange = { onFiltersChanged(state.filters.copy(query = it)) },
-                placeholder = { Text("Buscar alarme ou equipamento…", fontSize = 13.sp) }, singleLine = true,
+                placeholder = { Text("Buscar alarme ou equipamento…", color = TextSecondary, fontSize = 13.sp) }, singleLine = true,
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = TextMuted) },
                 trailingIcon = { if (state.filters.query.isNotEmpty()) IconButton(onClick = { onFiltersChanged(state.filters.copy(query = "")) }) {
                     Icon(Icons.Default.Close, "Limpar pesquisa", tint = TextMuted)
@@ -104,7 +108,7 @@ fun AlarmesContent(
             Text("Dados desatualizados — última consulta: ${state.updatedAt?.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")).orEmpty()}",
                 fontSize = 11.sp, color = ToneYellowText)
         } else if (state.hasSnapshot) item {
-            Text("Atualizado em ${state.updatedAt?.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")).orEmpty()}", fontSize = 11.sp, color = TextMuted)
+            Text("Atualizado em ${state.updatedAt?.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")).orEmpty()}", fontSize = 11.sp, color = TextSecondary)
         }
         if (state.hasSnapshot && visible.isEmpty()) item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

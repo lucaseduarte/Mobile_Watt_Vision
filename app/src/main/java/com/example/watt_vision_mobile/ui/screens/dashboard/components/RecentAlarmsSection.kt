@@ -29,7 +29,7 @@ import com.example.watt_vision_mobile.ui.theme.*
 
 @Composable
 fun RecentAlarmsSection(
-    alarms: List<AlarmData>,
+    alarms: List<AlarmData>?,
     modifier: Modifier = Modifier,
     onSeeAllClick: () -> Unit = {}
 ) {
@@ -62,7 +62,7 @@ fun RecentAlarmsSection(
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = "${alarms.size} ativos",
+                        text = alarms?.let { "${it.size} ativos" } ?: "—",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = ToneYellowText
@@ -77,8 +77,14 @@ fun RecentAlarmsSection(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                alarms.forEach { alarm ->
-                    AlarmItemRow(alarm = alarm)
+                if (alarms.isNullOrEmpty()) {
+                    Text(
+                        text = if (alarms == null) "Alarmes indisponíveis." else "Nenhum alarme ativo.",
+                        color = TextMuted,
+                        fontSize = 13.sp
+                    )
+                } else {
+                    alarms.forEach { alarm -> AlarmItemRow(alarm = alarm) }
                 }
             }
 

@@ -1,6 +1,5 @@
 package com.example.watt_vision_mobile.ui.screens.medicoes
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -12,6 +11,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.listSaver
@@ -28,8 +30,11 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.watt_vision_mobile.ui.components.WattVisionHeaderShortcut
+import com.example.watt_vision_mobile.ui.components.WattVisionScreenHeader
 import com.example.watt_vision_mobile.ui.components.filtros.BotaoFiltros
 import com.example.watt_vision_mobile.ui.components.filtros.PainelFiltros
+import com.example.watt_vision_mobile.ui.screens.dashboard.components.CardComSombreamentoDashboard
 import com.example.watt_vision_mobile.ui.screens.dashboard.components.FiltroItemModel
 import com.example.watt_vision_mobile.ui.screens.dashboard.components.FiltroLinhaSeletor
 import com.example.watt_vision_mobile.ui.screens.dashboard.components.FiltroSeletorBusca
@@ -122,36 +127,43 @@ private data class FiltrosMedicao(
     }
 }
 
-internal data class DemonstracaoMedicoes(
-    val serie: SerieMedicoes? = null,
-    val catalogo: ChartCatalog = ChartCatalog(),
-    val registros: List<RegistroMedicao> = emptyList(),
-    val alternar: (() -> Unit)? = null
-)
-
 @Composable
-fun MedicoesScreen(modifier: Modifier = Modifier) {
+internal fun MedicoesScreen(
+    onNavigate: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    serieReal: SerieRealViewModel? = null
+) {
     var filtrosReais by rememberSaveable(stateSaver = FiltrosMedicao.Saver) { mutableStateOf(FiltrosMedicao()) }
     var filtrosDemo by rememberSaveable(stateSaver = FiltrosMedicao.Saver) { mutableStateOf(FiltrosMedicao()) }
     var filtrosAbertos by rememberSaveable { mutableStateOf(false) }
+    var pontosAbertos by rememberSaveable { mutableStateOf(false) }
 
-    val demonstracao = demonstracaoMedicoes(filtrosDemo.grandeza.metrica, filtrosDemo.periodo)
-    val serieSimulada = demonstracao.serie
-    val filtros = if (serieSimulada == null) filtrosReais else filtrosDemo
+    val fonte: FonteSerieSimulada? = remember { fonteSerieSimulada() }
+    val estadoReal = serieReal?.estadoDaFonte()
+    val real = estadoReal?.modoReal == true
+    var demonstracaoAtiva by rememberSaveable { mutableStateOf(serieReal != null && fonte != null) }
+    var revisao by remember { mutableIntStateOf(0) }
+    val simulada = !real && fonte != null && (serieReal?.habilitada == true || demonstracaoAtiva)
+    val filtros = if (simulada) filtrosDemo else filtrosReais
     val grandeza = filtros.grandeza
     val aplicarFiltros: (FiltrosMedicao) -> Unit = {
-        if (serieSimulada == null) filtrosReais = it else filtrosDemo = it
+        if (simulada) filtrosDemo = it else filtrosReais = it
     }
-    val consulta = if (serieSimulada == null) {
-        consultarMedicoes(filtros.filtroConsulta(), grandeza.metrica)
-    } else {
-        ConsultaMedicoes(
-            catalogo = demonstracao.catalogo,
-            serie = serieSimulada,
-            aviso = "Dados simulados · Demonstração",
-            registros = demonstracao.registros
-        )
+    val atualizar: () -> Unit = {
+        if (real) serieReal.fonte.atualizar() else revisao++
     }
+    val consulta = when {
+        real -> remember(estadoReal, grandeza, serieReal) {
+            consultaMedicoesReal(estadoReal, grandeza.metrica, atualizar)
+        }
+        simulada ->
+            consultarMedicoes(fonte, filtros.filtroConsulta().copy(metric = grandeza.metrica), revisao, atualizar)
+        else -> ConsultaMedicoes(aviso = "Consultas de negócio suspensas.")
+    }
+    val periodoVisivel = if (real) "Últimas ${estadoReal.horas} horas" else filtros.periodo
+    val ultima = if (real) consulta.registros.firstOrNull()?.let {
+        valorExibidoMedicao(grandeza.metrica, it.dados)
+    } else consulta.serie.amostras.lastOrNull()?.valor
     val valores = remember(consulta.serie) { consulta.serie.amostras.map { it.valor } }
     val casas = when (grandeza) {
         Grandeza.POTENCIA, Grandeza.ENERGIA, Grandeza.FATOR_POTENCIA -> 3
@@ -159,82 +171,127 @@ fun MedicoesScreen(modifier: Modifier = Modifier) {
     }
     fun formatarResumo(valor: Double?) = valor?.let { numeroMedicao(it, casas, minimo = 1) } ?: "—"
 
-    Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Medições", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-            Text("Visão geral do sistema", fontSize = 11.sp, color = TextMuted)
+    Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        WattVisionScreenHeader(
+            title = "Medições",
+            subtitle = "Visão geral do sistema"
+        ) {
+            WattVisionHeaderShortcut(Icons.Filled.Notifications, "Alarmes recentes") { onNavigate("Alarmes") }
+            Spacer(Modifier.width(8.dp))
+            WattVisionHeaderShortcut(Icons.Filled.Settings, "Configurações do sistema") { onNavigate("Configurações") }
         }
 
-        val chips = filtros.chipsAtivos()
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val alternar = demonstracao.alternar
-            if (alternar != null) {
-                OutlinedButton(onClick = alternar, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(if (serieSimulada == null) "Demonstração" else "Sair da demonstração")
+            val chips = filtros.chipsAtivos()
+            if (serieReal?.habilitada == true) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(onClick = {
+                        filtrosAbertos = false
+                        pontosAbertos = false
+                        serieReal.fonte.selecionarModoReal(!real)
+                    }) { Text(if (real) "Dados simulados" else "Dados reais do Backend") }
+                    if (real || simulada) {
+                        IconButton(
+                            onClick = atualizar,
+                            enabled = !real || estadoReal?.resultado != ResultadoSerieReal.Carregando
+                        ) {
+                            Icon(Icons.Filled.Refresh, contentDescription =
+                                if (real) "Atualizar medições reais" else "Atualizar medições simuladas")
+                        }
+                    }
+                }
+            } else if (fonte != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(
+                        onClick = { demonstracaoAtiva = !demonstracaoAtiva },
+                        modifier = Modifier.heightIn(min = 48.dp)
+                    ) {
+                        Text(if (simulada) "Sair da demonstração" else "Demonstração")
+                    }
+                    if (simulada) {
+                        IconButton(onClick = atualizar) {
+                            Icon(Icons.Filled.Refresh, contentDescription = "Atualizar medições simuladas")
+                        }
+                    }
+                }
+            }
+            if (real) {
+                ResumoConsultaReal(estadoReal)
+                OpcoesMedicao("Janela solicitada", "${estadoReal.horas} h", JANELAS_SERIE_REAL.map { "$it h" }, true) {
+                    serieReal.fonte.selecionarJanela(it.substringBefore(' ').toInt())
+                }
+                OpcoesMedicao("Grandeza", grandeza.rotulo, Grandeza.entries.map { it.rotulo }) { escolha ->
+                    aplicarFiltros(filtros.copy(grandeza = Grandeza.entries.first { it.rotulo == escolha }))
                 }
             } else {
-                Spacer(Modifier.weight(1f))
-            }
-            BotaoFiltros(chips.size) { filtrosAbertos = true }
-        }
-        if (serieSimulada != null) {
-            Text("Demonstração · Dados simulados", color = TextSubtle, fontSize = 12.sp)
-        }
-        if (chips.isNotEmpty()) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(chips, key = { it.first }) { (rotulo, filtrosAtualizados) ->
-                    InputChip(
-                        selected = true,
-                        onClick = { aplicarFiltros(filtrosAtualizados) },
-                        label = { Text(rotulo, fontSize = 11.sp) },
-                        trailingIcon = {
-                            Icon(Icons.Default.Close, "Remover filtro $rotulo", Modifier.size(16.dp))
-                        },
-                        colors = InputChipDefaults.inputChipColors(
-                            containerColor = SurfaceDark,
-                            selectedContainerColor = SurfaceDark,
-                            labelColor = TextWhite,
-                            selectedLabelColor = TextWhite,
-                            trailingIconColor = TextMuted
-                        )
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BotaoPontosMedicao(Modifier.weight(1f)) { pontosAbertos = true }
+                    BotaoFiltros(chips.size) { filtrosAbertos = true }
                 }
             }
-        }
+            if (simulada) {
+                Text("Demonstração · Dados simulados", color = TextSubtle, fontSize = 12.sp)
+            }
+            if (!real && chips.isNotEmpty()) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(chips, key = { it.first }) { (rotulo, filtrosAtualizados) ->
+                        InputChip(
+                            selected = true,
+                            onClick = { aplicarFiltros(filtrosAtualizados) },
+                            label = { Text(rotulo, fontSize = 11.sp) },
+                            trailingIcon = {
+                                Icon(Icons.Default.Close, "Remover filtro $rotulo", Modifier.size(16.dp))
+                            },
+                            colors = InputChipDefaults.inputChipColors(
+                                containerColor = SurfaceDark,
+                                selectedContainerColor = SurfaceDark,
+                                labelColor = TextWhite,
+                                selectedLabelColor = TextWhite,
+                                trailingIconColor = TextMuted
+                            )
+                        )
+                    }
+                }
+            }
 
-        Row(
-            Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+            Row(
+                Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                CardMedicao(
+                    "Média do Período", formatarResumo(valores.takeIf { it.isNotEmpty() }?.average()), grandeza.unidade,
+                    "Média de ${grandeza.descricao}", IconeMedicao.MEDIA, Modifier.weight(1f).fillMaxHeight()
+                )
+                CardMedicao(
+                    "Valor Máximo", formatarResumo(valores.maxOrNull()), grandeza.unidade,
+                    grandeza.maior, IconeMedicao.MAXIMO, Modifier.weight(1f).fillMaxHeight()
+                )
+            }
             CardMedicao(
-                "Média do Período", formatarResumo(valores.takeIf { it.isNotEmpty() }?.average()), grandeza.unidade,
-                "Média de ${grandeza.descricao}", IconeMedicao.MEDIA, Modifier.weight(1f).fillMaxHeight()
+                if (real) "Última leitura" else "Valor Atual", formatarResumo(ultima), grandeza.unidade,
+                "Última leitura de ${grandeza.descricao}", IconeMedicao.ATUAL, Modifier.fillMaxWidth()
             )
-            CardMedicao(
-                "Valor Máximo", formatarResumo(valores.maxOrNull()), grandeza.unidade,
-                grandeza.maior, IconeMedicao.MAXIMO, Modifier.weight(1f).fillMaxHeight()
-            )
-        }
-        CardMedicao(
-            "Valor Atual", formatarResumo(valores.lastOrNull()), grandeza.unidade,
-            "Última leitura de ${grandeza.descricao}", IconeMedicao.ATUAL, Modifier.fillMaxWidth()
-        )
-        key(filtros, serieSimulada != null) {
-            GraficoMedicoes(grandeza.metrica, grandeza.unidade, filtros.periodo, consulta)
-        }
-        key(filtros.filtroConsulta(), serieSimulada != null) {
-            TabelaDadosBrutos(consulta, grandeza.metrica)
+            key(filtros, simulada) {
+                GraficoMedicoes(grandeza.metrica, grandeza.unidade, periodoVisivel, consulta)
+            }
+            key(filtros.filtroConsulta(), simulada) {
+                TabelaDadosBrutos(consulta, grandeza.metrica)
+            }
         }
     }
 
-    if (filtrosAbertos) {
+    if (!real && pontosAbertos) {
+        PontosMedicaoSheet(onFechar = { pontosAbertos = false })
+    }
+
+    if (!real && filtrosAbertos) {
         FiltrosMedicaoSheet(
             filtros = filtros,
             catalogo = consulta.catalogo,
@@ -245,6 +302,36 @@ fun MedicoesScreen(modifier: Modifier = Modifier) {
             onDismiss = { filtrosAbertos = false }
         )
     }
+}
+
+@Composable
+private fun SerieRealViewModel.estadoDaFonte(): EstadoSerieReal = fonte.estado.collectAsState().value
+
+@Composable
+internal fun ResumoConsultaReal(estado: EstadoSerieReal) {
+    Text("Dados reais do Backend · PZEM 1 · Motor Elétrico WEG 01", color = TextSubtle, fontSize = 12.sp)
+    val atualizadaEm = when (val resultado = estado.resultado) {
+        is ResultadoSerieReal.ComDados -> {
+            val serie = resultado.serie
+            Text("${serie.quantidade} medições · Intervalo observado", color = TextSubtle, fontSize = 12.sp)
+            Text("${serie.primeiroTimestamp} a ${serie.ultimoTimestamp}", color = TextSubtle, fontSize = 12.sp)
+            Text("Última medição: ${serie.ultimoTimestamp}", color = TextSubtle, fontSize = 12.sp)
+            serie.atualizadaEm
+        }
+        is ResultadoSerieReal.Vazio -> {
+            Text("0 medições", color = TextSubtle, fontSize = 12.sp)
+            resultado.atualizadaEm
+        }
+        else -> null
+    }
+    if (atualizadaEm != null) {
+        val formato = remember {
+            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss", localeMedicoes)
+                .withZone(ZONA_SERIE_REAL)
+        }
+        Text("Consulta atualizada em ${formato.format(atualizadaEm)}", color = TextSubtle, fontSize = 12.sp)
+    }
+    Text("Horários da série interpretados em America/Sao_Paulo.", color = TextSubtle, fontSize = 12.sp)
 }
 
 @Composable
@@ -331,7 +418,7 @@ private fun CampoMedicao(titulo: String, label: String, valor: String, onClick: 
 }
 
 @Composable
-private fun OpcoesMedicao(
+internal fun OpcoesMedicao(
     titulo: String,
     selecionado: String,
     opcoes: List<String>,
@@ -395,11 +482,11 @@ private fun CardMedicao(
     icone: IconeMedicao,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    CardComSombreamentoDashboard(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
-        color = CardBackground,
-        border = BorderStroke(1.dp, Color(0xFF263448))
+        fundo = CardBackground,
+        borda = Color(0xFF263448)
     ) {
         Column(Modifier.padding(16.dp)) {
             val formatoIcone = RoundedCornerShape(12.dp)

@@ -16,8 +16,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,7 +46,6 @@ fun FiltroSeletorBusca(
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var debouncedQuery by rememberSaveable { mutableStateOf("") }
-    val focusRequester = remember { FocusRequester() }
     val listState = rememberLazyListState()
 
     // Debounce de 200ms para busca (preparado também para buscas assíncronas/servidor)
@@ -57,12 +54,6 @@ fun FiltroSeletorBusca(
         debouncedQuery = searchQuery
     }
 
-    // Foco automático no campo de busca ao abrir
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    // Separa a opção "Todos" e filtra o restante usando normalização de acentos
     val filteredItems = remember(debouncedQuery, items) {
         val queryNormalized = StringNormalization.normalize(debouncedQuery)
         items.filter { item ->
@@ -122,7 +113,7 @@ fun FiltroSeletorBusca(
 
             HorizontalDivider(color = CardBorder, thickness = 1.dp)
 
-            // Campo de Busca Fixo com Foco Automático
+            // Campo de busca
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -152,9 +143,7 @@ fun FiltroSeletorBusca(
                         unfocusedTextColor = TextWhite
                     ),
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester)
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 

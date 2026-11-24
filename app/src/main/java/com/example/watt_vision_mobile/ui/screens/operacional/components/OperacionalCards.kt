@@ -52,8 +52,8 @@ fun EquipamentoCard(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val potenciaStr = String.format(Locale.getDefault(), "%.2f W", item.potenciaW)
-    val consumoStr = String.format(Locale.getDefault(), "%.1f kWh", item.consumoKwh)
+    val potenciaStr = item.potenciaW?.let { String.format(Locale.getDefault(), "%.2f W", it) } ?: "—"
+    val consumoStr = item.consumoKwh?.let { String.format(Locale.getDefault(), "%.1f kWh", it) } ?: "—"
     val desc = "Equipamento ${item.nome}, código ${item.codigo}, status ${item.status}, potência $potenciaStr, consumo $consumoStr, local ${item.localNome}, setor ${item.setorNome}" +
             if (onClick != null) ", toque para ver detalhes" else ""
 
@@ -88,9 +88,7 @@ fun EquipamentoCard(
                         text = item.nome.ifBlank { "—" },
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextWhite,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = TextWhite
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
@@ -137,7 +135,7 @@ fun SetorCard(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val consumoStr = String.format(Locale.getDefault(), "%.1f kWh", item.consumoAcumuladoKwh)
+    val consumoStr = item.consumoAcumuladoKwh?.let { String.format(Locale.getDefault(), "%.1f kWh", it) } ?: "—"
     val desc = "Setor ${item.nome}, código ${item.codigo}, status ${item.status}, local ${item.localNome}, equipamentos vinculados ${item.equipamentosVinculados}, consumo $consumoStr" +
             if (onClick != null) ", toque para ver detalhes" else ""
 
@@ -218,7 +216,7 @@ fun LocalCard(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val consumoStr = String.format(Locale.getDefault(), "%.1f kWh", item.consumoAcumuladoKwh)
+    val consumoStr = item.consumoAcumuladoKwh?.let { String.format(Locale.getDefault(), "%.1f kWh", it) } ?: "—"
     val desc = "Local ${item.nome}, código ${item.codigo}, status ${item.status}, setores vinculados ${item.setoresVinculados}, equipamentos ${item.equipamentosVinculados}, consumo $consumoStr" +
             if (onClick != null) ", toque para ver detalhes" else ""
 
@@ -319,7 +317,8 @@ fun PreviewEquipamentoCard() {
                 setorNome = "Produção B",
                 potenciaW = 1500.0,
                 consumoKwh = 124.5,
-                status = "Ativo"
+                status = "Ativo",
+                setorId = "1"
             )
         )
     }
@@ -337,7 +336,8 @@ fun PreviewSetorCard() {
                 localNome = "Planta Industrial Jandira",
                 equipamentosVinculados = 8,
                 consumoAcumuladoKwh = 1685.3,
-                status = "Ativo"
+                status = "Ativo",
+                localId = "1"
             )
         )
     }

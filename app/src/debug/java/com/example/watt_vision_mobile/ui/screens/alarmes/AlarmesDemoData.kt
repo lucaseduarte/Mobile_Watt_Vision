@@ -10,7 +10,8 @@ import java.time.LocalDateTime
 /** Exemplos artificiais, independentes do banco, gerados somente após ativação explícita. */
 object AlarmesDemoData {
     suspend fun entidade(alarme: Alarme): AlarmeEntidade? {
-        val id = alarme.id?.toInt() ?: return null
+        val dispositivo = alarme.dispositivoIotId?.takeIf { it in 301L..309L } ?: return null
+        val id = (dispositivo - 300L).toInt()
         val nome = alarme.nomeEquipamento ?: return null
         return AlarmeEntidade(
             AlarmeTipoEntidade.EQUIPAMENTO, id, nome,
@@ -18,7 +19,9 @@ object AlarmesDemoData {
         )
     }
 
-    fun create(now: LocalDateTime): List<Alarme> {
+    fun create(now: LocalDateTime): List<Alarme> = responses(now).map(AlarmeMapper::map)
+
+    internal fun responses(now: LocalDateTime): List<AlarmeDto> {
         val samples = listOf(
             Triple("ativo", "critico", "energetico"), Triple("ativo", "atencao", "energetico"),
             Triple("ativo", "informativo", "comunicacao"), Triple("reconhecido", "critico", "energetico"),
@@ -34,7 +37,7 @@ object AlarmesDemoData {
             "Ocorrência informativa já reconhecida no sistema de exemplo."
         )
         val records = samples.mapIndexed { index, (status, severity, category) ->
-            AlarmeMapper.map(AlarmeDto(
+            AlarmeDto(
                 id = 10001L + index, id_tipo_alerta = if (category == "energetico") 101 else 102,
                 id_limite = if (category == "energetico") 201 else null,
                 id_dispositivo_iot = 301L + index, id_medicao = if (category == "energetico") 401L + index else null,
@@ -47,8 +50,8 @@ object AlarmesDemoData {
                 categoria_alerta = category,
                 reconhecido_por = if (status == "reconhecido") 501 else null,
                 data_reconhecimento = if (status == "reconhecido") now.minusMinutes(index * 30L - 5).toString() else null
-            ))
+            )
         }
-        return records + AlarmeMapper.map(AlarmeDto(id = 10010L, mensagem = "Exemplo de registro com classificação ausente.", data_hora = now.minusDays(1).toString()))
+        return records + AlarmeDto(id = 10010L, mensagem = "Exemplo de registro com classificação ausente.", data_hora = now.minusDays(1).toString())
     }
 }

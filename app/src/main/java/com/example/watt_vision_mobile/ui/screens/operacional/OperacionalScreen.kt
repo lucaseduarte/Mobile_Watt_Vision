@@ -1,8 +1,7 @@
 package com.example.watt_vision_mobile.ui.screens.operacional
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,13 +15,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.watt_vision_mobile.ui.components.WattVisionHeaderShortcut
+import com.example.watt_vision_mobile.ui.components.WattVisionScreenHeader
 import com.example.watt_vision_mobile.ui.screens.operacional.components.*
 import com.example.watt_vision_mobile.ui.theme.*
 import kotlinx.coroutines.launch
@@ -38,6 +40,7 @@ fun OperacionalScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val errorMessage = uiState.errorMessage
     val pagerState = rememberPagerState(initialPage = uiState.activeTab) { 3 }
     val coroutineScope = rememberCoroutineScope()
 
@@ -49,88 +52,15 @@ fun OperacionalScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = DarkBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            // TopAppBar sem cor de fundo (DarkBackground), com título, subtítulo e botões de alarme e configuração no canto superior direito
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(DarkBackground)
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            WattVisionScreenHeader(
+                title = "Operacional",
+                subtitle = "Dados simulados"
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f, fill = false)) {
-                        Text(
-                            text = "Operacional",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextWhite,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "Visão geral do sistema",
-                            fontSize = 11.sp,
-                            color = TextMuted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clickable { onNavigate("Alarmes") },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = SurfaceDark,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
-                                modifier = Modifier.size(38.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Notifications,
-                                        contentDescription = "Alarmes recentes",
-                                        tint = TextMuted,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clickable { onNavigate("Configurações") },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = SurfaceDark,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
-                                modifier = Modifier.size(38.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Settings,
-                                        contentDescription = "Configurações do sistema",
-                                        tint = TextMuted,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+                WattVisionHeaderShortcut(Icons.Filled.Notifications, "Alarmes recentes") { onNavigate("Alarmes") }
+                Spacer(Modifier.width(8.dp))
+                WattVisionHeaderShortcut(Icons.Filled.Settings, "Configurações do sistema") { onNavigate("Configurações") }
             }
         }
     ) { innerPadding ->
@@ -139,34 +69,55 @@ fun OperacionalScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // PrimaryTabRow sem background sólido (containerColor = DarkBackground)
-            val tabs = listOf("Equipamentos", "Setores", "Locais")
-            PrimaryTabRow(
-                selectedTabIndex = pagerState.currentPage,
-                containerColor = DarkBackground,
-                contentColor = PrimaryBlue,
-                divider = { HorizontalDivider(color = CardBorder, thickness = 1.dp) }
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    val isSelected = pagerState.currentPage == index
-                    Tab(
-                        selected = isSelected,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                        text = {
-                            Text(
-                                text = title,
-                                fontSize = 13.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) PrimaryBlue else TextMuted
-                            )
-                        },
-                        modifier = Modifier
-                            .heightIn(min = 48.dp)
-                            .semantics { contentDescription = "Aba $title, selecionada: $isSelected" }
+            BoxWithConstraints {
+                val tabs = listOf("Equipamentos", "Setores", "Locais")
+                val medir = rememberTextMeasurer()
+                val estilo = MaterialTheme.typography.titleSmall.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                val precisaRolar = with(LocalDensity.current) {
+                    val larguraTexto = (maxWidth / tabs.size - 32.dp).toPx()
+                    tabs.any { medir.measure(it, estilo, softWrap = false).size.width > larguraTexto }
+                }
+                val conteudo: @Composable () -> Unit = {
+                    tabs.forEachIndexed { index, title ->
+                        val isSelected = pagerState.currentPage == index
+                        Tab(
+                            selected = isSelected,
+                            onClick = {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
+                            },
+                            text = {
+                                Text(
+                                    text = title,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) ToneBlueText else TextSecondary
+                                )
+                            },
+                            modifier = Modifier
+                                .heightIn(min = 48.dp)
+                                .semantics { contentDescription = "Aba $title, selecionada: $isSelected" }
+                        )
+                    }
+                }
+                val divisor: @Composable () -> Unit = { HorizontalDivider(color = CardBorder) }
+                if (precisaRolar) {
+                    PrimaryScrollableTabRow(
+                        selectedTabIndex = pagerState.currentPage,
+                        containerColor = DarkBackground,
+                        contentColor = PrimaryBlue,
+                        edgePadding = 0.dp,
+                        divider = divisor,
+                        tabs = conteudo
+                    )
+                } else {
+                    PrimaryTabRow(
+                        selectedTabIndex = pagerState.currentPage,
+                        containerColor = DarkBackground,
+                        contentColor = PrimaryBlue,
+                        divider = divisor,
+                        tabs = conteudo
                     )
                 }
             }
@@ -206,6 +157,8 @@ fun OperacionalScreen(
                                 ) {
                                     items(5) { OperacionalSkeletonCard() }
                                 }
+                            } else if (errorMessage != null) {
+                                OperacionalErroState(errorMessage, viewModel::loadData)
                             } else if (uiState.equipamentos.isEmpty()) {
                                 ListaVaziaState(
                                     mensagem = "Nenhum registro cadastrado. Os cadastros são feitos pela versão web."
@@ -254,6 +207,8 @@ fun OperacionalScreen(
                                 ) {
                                     items(5) { OperacionalSkeletonCard() }
                                 }
+                            } else if (errorMessage != null) {
+                                OperacionalErroState(errorMessage, viewModel::loadData)
                             } else if (uiState.setores.isEmpty()) {
                                 ListaVaziaState(
                                     mensagem = "Nenhum registro cadastrado. Os cadastros são feitos pela versão web."
@@ -302,6 +257,8 @@ fun OperacionalScreen(
                                 ) {
                                     items(5) { OperacionalSkeletonCard() }
                                 }
+                            } else if (errorMessage != null) {
+                                OperacionalErroState(errorMessage, viewModel::loadData)
                             } else if (uiState.locais.isEmpty()) {
                                 ListaVaziaState(
                                     mensagem = "Nenhum registro cadastrado. Os cadastros são feitos pela versão web."
@@ -328,6 +285,41 @@ fun OperacionalScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+internal fun <T : Any> OperacionalDetalhe(
+    state: OperacionalUiState,
+    item: T?,
+    onBack: () -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier,
+    content: @Composable (T) -> Unit
+) {
+    if (!state.isLoading && state.errorMessage == null && item != null) {
+        content(item)
+        return
+    }
+
+    BackHandler(onBack = onBack)
+    Column(modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+        TextButton(onClick = onBack) { Text("Voltar") }
+        when {
+            state.isLoading -> CircularProgressIndicator(Modifier.padding(24.dp))
+            state.errorMessage != null -> OperacionalErroState(state.errorMessage, onRetry)
+            else -> ListaVaziaState("Cadastro não encontrado.")
+        }
+    }
+}
+
+@Composable
+private fun OperacionalErroState(mensagem: String, onRetry: () -> Unit) {
+    Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(mensagem, fontSize = 13.sp, color = TextMuted, fontWeight = FontWeight.Medium)
+            TextButton(onClick = onRetry) { Text("Tentar novamente") }
         }
     }
 }

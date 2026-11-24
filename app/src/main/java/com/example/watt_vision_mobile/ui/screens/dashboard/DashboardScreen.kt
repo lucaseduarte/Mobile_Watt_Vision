@@ -9,14 +9,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.watt_vision_mobile.ui.screens.dashboard.components.*
 import com.example.watt_vision_mobile.ui.theme.DarkBackground
+import com.example.watt_vision_mobile.ui.screens.dashboard.components.*
 
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
     onNavigate: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    modoCompartilhado: Boolean = false
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -29,7 +30,7 @@ fun DashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(vertical = 12.dp),
+                .padding(bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // 1. Cabeçalho com barra de filtros compacta e ModalBottomSheet
@@ -63,21 +64,30 @@ fun DashboardScreen(
                 StatCardsSection(cards = uiState.summaryCards)
 
                 // 4. Gráfico "Desempenho do Sistema"
-                DashboardChart(
+                if (modoCompartilhado) {
+                    SystemPerformanceChart(
+                        uiState.chartPoints, uiState.filters.metric.key, uiState.selectedChartPeriod,
+                        viewModel::onMetricSelected, viewModel::onChartPeriodSelected, uiState.chart,
+                        viewModel::retryChart
+                    )
+                } else DashboardChart(
                     points = uiState.chartPoints,
-                    selectedMetric = uiState.selectedMetric,
+                    selectedMetric = uiState.filters.metric.key,
                     selectedPeriod = uiState.selectedChartPeriod,
                     onMetricSelected = { viewModel.onMetricSelected(it) },
                     onPeriodSelected = { viewModel.onChartPeriodSelected(it) },
                     state = uiState.chart,
-                    onRetry = viewModel::retryChart
+                    onRetry = viewModel::retryChart,
+                    demonstracao = uiState.simulated,
+                    onToggleDemo = viewModel::alternarDemonstracao
                 )
 
-                // 5. Alarmes Recentes
                 RecentAlarmsSection(
                     alarms = uiState.alarms,
                     onSeeAllClick = { onNavigate("Alarmes") }
                 )
+
+                IndicadoresEnergeticosSection(periodText = uiState.filters.period)
 
                 Spacer(modifier = Modifier.height(16.dp))
             }

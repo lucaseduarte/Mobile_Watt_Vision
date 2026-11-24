@@ -63,7 +63,7 @@ class ChartCatalogTest {
         val allowed = catalog.scopedPointIds(filter)
         assertEquals(setOf(7), allowed)
         val rows = listOf(8, 7).mapIndexed { index, point ->
-            MedicaoDto(id_medicao = index, id_pzem = 91, id_ponto_medicao = point,
+            MedicaoDto(id_medicao = index.toLong(), id_pzem = 91, id_ponto_medicao = point,
                 data_hora = "2026-11-17 10:0$index:00", tensaoRaw = 220)
         }
         val mapped = ChartLogic.map(rows, ChartMetric.VOLTAGE,

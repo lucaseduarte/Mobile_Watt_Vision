@@ -31,7 +31,7 @@ import com.example.watt_vision_mobile.ui.components.filtros.FiltroSeletorBusca
 import com.example.watt_vision_mobile.ui.screens.operacional.TabFilterState
 import com.example.watt_vision_mobile.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun OperacionalFilterBar(
     tabIndex: Int, // 0 = Equipamentos, 1 = Setores, 2 = Locais
@@ -70,7 +70,7 @@ fun OperacionalFilterBar(
         OutlinedTextField(
             value = filters.searchQuery,
             onValueChange = onQueryChanged,
-            placeholder = { Text(searchPlaceholder, color = TextMuted, fontSize = 13.sp) },
+            placeholder = { Text(searchPlaceholder, color = TextSecondary, fontSize = 13.sp) },
             singleLine = true,
             leadingIcon = {
                 Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = TextMuted)
@@ -98,13 +98,17 @@ fun OperacionalFilterBar(
         )
 
         // Chips de Status (Todos / Ativo / Inativo) + Botão "Filtros" (para abas 0 e 1)
-        Row(
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             // Chips de Status (Visíveis em todas as abas)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FlowRow(
+                modifier = Modifier.align(Alignment.CenterVertically),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 statusOptions.forEach { statusOpt ->
                     val isSelected = filters.statusFilter.equals(statusOpt, ignoreCase = true)
                     FilterChip(
@@ -128,7 +132,8 @@ fun OperacionalFilterBar(
             if (tabIndex < 2) {
                 Box(
                     modifier = Modifier
-                        .height(36.dp)
+                        .align(Alignment.CenterVertically)
+                        .heightIn(min = 36.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .clickable {
                             draftFilters = filters
@@ -144,7 +149,7 @@ fun OperacionalFilterBar(
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                         shape = RoundedCornerShape(12.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp),
-                        modifier = Modifier.height(36.dp)
+                        modifier = Modifier.heightIn(min = 36.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.FilterList,

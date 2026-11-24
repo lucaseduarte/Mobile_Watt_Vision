@@ -14,13 +14,11 @@ class ConsultativeScopeTest {
         val original = vm.uiState.value
         vm.updateTema("Claro")
         vm.salvarPreferenciasLocais()
-        for (tab in 0..3) vm.setActiveTab(tab)
+        for (tab in 0..1) vm.setActiveTab(tab)
         val current = vm.uiState.value
         assertEquals(original.geral.nomeEmpresa, current.geral.nomeEmpresa)
         assertEquals(original.geral.fusoHorario, current.geral.fusoHorario)
-        assertEquals(original.tarifas, current.tarifas)
         assertEquals(original.usuarios, current.usuarios)
-        assertEquals(original.pontosMedicao, current.pontosMedicao)
         assertEquals("DD/MM/AAAA", current.geral.formatoData)
         assertEquals("Claro", current.geral.tema)
     }
@@ -29,9 +27,9 @@ class ConsultativeScopeTest {
         vm.salvarPreferenciasLocais()
         val saved = vm.uiState.value
         vm.updateTema("Claro")
-        vm.setActiveTab(2)
+        vm.setActiveTab(1)
         vm.cancelarPreferenciasLocais()
-        assertEquals(saved.copy(activeTab = 2), vm.uiState.value)
+        assertEquals(saved.copy(activeTab = 1), vm.uiState.value)
     }
     @Test fun monitoringInterfaceExposesOnlyReviewedReadOperations() {
         val expected = setOf("api/medicoes/resumo", "api/medicoes/ultima", "api/medicoes/serie-temporal",

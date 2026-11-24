@@ -3,12 +3,13 @@ package com.example.watt_vision_mobile.data.repository
 import com.example.watt_vision_mobile.data.api.WattVisionApiService
 import com.example.watt_vision_mobile.model.alarmes.AlarmeEntidade
 import com.example.watt_vision_mobile.ui.screens.equipamento_detalhe.*
+import com.example.watt_vision_mobile.ui.screens.operacional.EquipamentoItem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 interface EquipamentoDetalheRepository {
-    suspend fun getDetalheEquipamento(id: String): Result<EquipamentoDetalheData>
+    suspend fun getDetalheEquipamento(equipamento: EquipamentoItem): Result<EquipamentoDetalheData>
 }
 
 class EquipamentoCadastroRepository(private val api: WattVisionApiService) {
@@ -47,42 +48,17 @@ class MockEquipamentoDetalheRepository : EquipamentoDetalheRepository {
 
     private var simulatedTickCount = 0
 
-    override suspend fun getDetalheEquipamento(id: String): Result<EquipamentoDetalheData> {
+    override suspend fun getDetalheEquipamento(equipamento: EquipamentoItem): Result<EquipamentoDetalheData> {
         return withContext(Dispatchers.IO) {
             simulatedTickCount++
 
-            // Coerência total de IDs com os gerados no MockOperacionalRepository
-            val idNum = id.toIntOrNull() ?: 1
-            val codigo = "EQ-${idNum.toString().padStart(3, '0')}"
-            
-            val nome = when (idNum % 6) {
-                1 -> "Motor Elétrico WEG $idNum"
-                2 -> "Compressor de Ar Industrial $idNum"
-                3 -> "Bomba Centrífuga $idNum"
-                4 -> "Ponte Rolante $idNum"
-                5 -> "Inversor de Frequência $idNum"
-                else -> "Exaustor de Alta Pressão $idNum"
-            }
-
-            val localNome = when (idNum % 4) {
-                1 -> "Planta Industrial Jandira"
-                2 -> "Planta Industrial Osasco"
-                3 -> "Centro Logístico Alphaville"
-                else -> "Subestação Central"
-            }
-
-            val setorNome = when (idNum % 3) {
-                1 -> "Produção B"
-                2 -> "Manutenção Elétrica"
-                else -> "Caldeiraria & Usinagem"
-            }
+            val idNum = equipamento.id.toIntOrNull() ?: 0
 
             // Simula falha de conexão ocasional a cada 7 ticks para testar o estado STALE
             if (simulatedTickCount % 8 == 0) {
                 return@withContext Result.failure(Exception("Erro temporário de conexão com a API"))
             }
 
-            val status = if (idNum % 5 == 0) "Inativo" else "Ativo"
             val conexaoStatus = if (idNum % 3 == 0 || simulatedTickCount % 9 == 0) ConexaoStatus.OFFLINE else ConexaoStatus.ONLINE
             
             // Simula timestamp da última comunicação (se offline, há 12 min; se online, há alguns segundos)
@@ -153,18 +129,18 @@ class MockEquipamentoDetalheRepository : EquipamentoDetalheRepository {
 
             Result.success(
                 EquipamentoDetalheData(
-                    id = id,
-                    codigo = codigo,
-                    nome = nome,
+                    id = equipamento.id,
+                    codigo = equipamento.codigo,
+                    nome = equipamento.nome,
                     fabricante = fabricante,
                     modelo = modelo,
                     numeroSerie = numSerie,
                     tensaoNominalV = tensaoNominal,
                     dataInstalacao = dataInstalacao,
-                    localNome = localNome,
-                    setorNome = setorNome,
+                    localNome = equipamento.localNome,
+                    setorNome = equipamento.setorNome,
                     tipo = "Motor Elétrico",
-                    status = status,
+                    status = equipamento.status,
                     descricao = descricao,
                     conexaoStatus = conexaoStatus,
                     ultimaComunicacaoTimestampMs = ultimaComunicaoMs,

@@ -123,3 +123,41 @@ bash ./gradlew --no-configuration-cache :app:assembleDebug :app:testDebugUnitTes
 - `bash ./gradlew --no-configuration-cache :app:assembleRelease` falhou em `mergeReleaseResources`: `fundo_login.png` contém JPEG e AAPT não o compila. Recurso preexistente preservado, sem correção fora do escopo.
 - Testes usaram respostas controladas; não comprovaram integração real. Não foram executados testes instrumentados desta tela.
 - Nenhum commit criado; demais telas não foram iniciadas.
+
+## Relatórios
+
+- A rota existente **Relatórios** abre `RelatoriosScreen`. O destino usa Kotlin, Compose e Material 3, com `RelatoriosViewModel` e estado imutável em `StateFlow`.
+- Um botão Filtros abre o painel de período, local, setor, equipamento e grandeza. Os seletores têm busca, e local e setor restringem as opções de equipamento. A tarifa em R$/kWh é somente para consulta, e o custo estimado usa a tarifa configurada e o consumo do período selecionado.
+- Quatro indicadores fixos de consumo e custo. Energia por dia usa os deltas não negativos do contador de cada medidor. A primeira leitura é referência. Indicadores sem valor exibem traço.
+- A aba **Gráficos** aplica o filtro de grandeza, limita a amostra a 120 pontos e oferece escala Y por gráfico e consulta por toque ou arraste. **Medições por dia** usa todas as leituras disponíveis, mantém as seis grandezas e mostra o custo por dia.
+- Períodos reutilizam as janelas de Medições. **Hoje** começa à meia-noite, **Ontem** termina antes da meia-noite de hoje e **6 horas**, **Últimos 7 dias** e **Últimos 30 dias** são janelas móveis.
+- Em Debug, **Ver demonstração de Relatórios** ativa a fonte local do source set `debug`. O aviso **DEBUG · DADOS SIMULADOS** identifica a tela e cada página do PDF. Release permanece em estado vazio nesta etapa, com a função de fonte retornando ausência de dados.
+- Atualizar recarrega a fonte local. Exportar PDF usa o seletor de arquivos do Android, e Imprimir abre o serviço de impressão do sistema. Ambos usam o gerador de PDF do Front_WV em A4 paisagem, com as leituras filtradas antes da amostragem da tela.
+- O gerador Desktop roda offline em um WebView isolado. Para atualizar o bundle e as licenças a partir do Front_WV local, execute `node scripts/gerar-relatorios-pdf.mjs ../Front_WV` na raiz do Mobile. O script usa as dependências já instaladas no Desktop.
+- A integração com a API pertence à fase posterior. Os contratos encontrados são `GET /api/locais`, `GET /api/setores` e `GET /api/medicoes/serie-temporal` por PZEM, com limite de 10.000 registros por consulta. A cobertura de múltiplos medidores e a completude dos períodos precisam ser definidas nessa fase.
+- A suíte de validação usa `:app:assembleDebug`, `:app:testDebugUnitTest`, `:app:lintDebug` e `:app:compileReleaseKotlin`. Os testes de Relatórios verificam reinício do contador, isolamento por medidor, limite do dia anterior, janela de seis horas, amostragem e ausência de consumo sem uma segunda leitura.
+
+## Integração — Entrega 1: ambiente e segurança de rede
+
+Configure as URLs como propriedades Gradle no arquivo pessoal `%USERPROFILE%\.gradle\gradle.properties` (ou no diretório definido em `GRADLE_USER_HOME`). Na CI, use as variáveis `ORG_GRADLE_PROJECT_wattVisionDebugApiUrl` e `ORG_GRADLE_PROJECT_wattVisionReleaseApiUrl` conforme a variante.
+
+| Propriedade | Configuração |
+|---|---|
+| `wattVisionDebugApiUrl` | Opcional. Informe a URL absoluta HTTP ou HTTPS do servidor de desenvolvimento. Sem a propriedade, o aplicativo abre e o cliente bloqueia as chamadas antes de acessar a rede. Somente uma URL HTTP explícita habilita cleartext em Debug. |
+| `wattVisionReleaseApiUrl` | Obrigatória para gerar o Release. Informe a URL absoluta HTTPS aprovada para o ambiente de distribuição. O Gradle interrompe a geração se o valor estiver ausente ou inválido. |
+
+Use somente o endereço base. O app acrescenta a barra final quando necessário, e os serviços Retrofit já incluem o prefixo `api/`. A URL fica visível no APK. Nunca inclua usuário, senha, JWT, segredos, parâmetros de consulta ou fragmentos. Use dados e contas fictícias no servidor de desenvolvimento.
+
+O cliente HTTP não registra requisições nem respostas. As regras de backup e transferência excluem `watt_vision_prefs.xml`. O JWT continua nas SharedPreferences legadas até a Entrega 2. O aplicativo ainda não está liberado para credenciais reais.
+
+As consultas do Dashboard estão suspensas em ambas as variantes, inclusive após atualização manual, filtros e tentativas do gráfico. A suspensão cobre alertas ativos, equipamentos, última medição, resumo, série temporal e o carregamento dos catálogos de locais, setores, equipamentos, pontos de medição e PZEM. A validação de `/api/auth/me` que fazia parte do polling do gráfico também fica suspensa. Vincule as consultas a uma sessão validada e à autorização do servidor antes de reativá-las em `DashboardViewModel`.
+
+## Integração — Entrega 2: autenticação e sessão global
+
+O `AuthRepository` publica o estado de sessão via `StateFlow`. A navegação protegida só é criada após `GET /api/auth/me` confirmar a identidade, tanto no login quanto na restauração. Configurações usa a identidade validada em memória. A ação **Sair da conta** no Meu perfil limpa as credenciais e encerra os ViewModels da sessão.
+
+O cliente só permite o transporte de `POST /api/auth/login` e `GET /api/auth/me` nesta entrega. Redirecionamentos ficam desabilitados. O Dashboard mantém a suspensão da Entrega 1. A abertura de Alarmes pode pedir `/auth/me`; as consultas de alertas, catálogos e cadastro são bloqueadas antes de acessar a rede. O app segue sem autorização para usar credenciais corporativas reais.
+
+**Lembrar acesso** persiste o JWT somente após a confirmação do servidor. O Android Keystore mantém uma chave AES de 256 bits não exportável. O Android fornece o IV aleatório para AES-GCM, e o conteúdo autenticado fica no arquivo de preferências já excluído de backup e transferência. A variante e a Base URL fazem parte dos dados autenticados da cifra. Sem **Lembrar acesso**, a credencial existe apenas durante o processo.
+
+A migração remove apenas a chave legada `jwt_token` e solicita novo login. Chave ausente ou invalidada e conteúdo que falha na verificação criptográfica descartam o token salvo. Falha temporária de acesso ao armazenamento impede a entrada e permite nova tentativa. HTTP 401 invalida a sessão correspondente, enquanto 403 informa falta de acesso. Timeout e falha de servidor deixam a restauração pendente e preservam a credencial para nova tentativa. Respostas antigas são descartadas pela geração da sessão, mesmo quando dois logins recebem o mesmo JWT.

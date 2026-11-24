@@ -39,29 +39,16 @@ private enum class AbaDetalhes(val titulo: String) {
 
 private val rotuloTecnico = Color(0xFF8E96A4)
 private val valorTecnico = Color(0xFFF1F5F9)
-private const val SensorPzem = "PZEM-004T"
-
-private val telemetria = listOf(
-    "Tensão" to "220,4 V",
-    "Corrente" to "8,7 A",
-    "Potência Ativa" to "1.820 W",
-    "Energia Acumulada" to "84,2 kWh",
-    "Frequência" to "59,9 Hz",
-    "Fator de Potência" to "0,94 FP"
-)
-
-private data class EventoConexao(val conectado: Boolean, val horario: String, val duracao: String)
-
-private val eventosConexao = listOf(
-    EventoConexao(true, "Hoje, 14:32:08", "Disponível"),
-    EventoConexao(false, "Hoje, 14:23:51", "2min 14s"),
-    EventoConexao(true, "Hoje, 10:05:22", "4h 16min"),
-    EventoConexao(false, "Ontem, 18:42:10", "38s")
-)
+private val telemetria = listOf("Tensão", "Corrente", "Potência Ativa", "Energia Acumulada", "Frequência", "Fator de Potência")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DispositivoDetalhesScreen(onVoltar: () -> Unit, modifier: Modifier = Modifier) {
+internal fun DispositivoDetalhesScreen(
+    dispositivo: DispositivoConectividade?,
+    eventos: List<EventoConectividade>,
+    onVoltar: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     var aba by rememberSaveable { mutableStateOf(AbaDetalhes.TELEMETRIA) }
     val estadoAbas = rememberSaveableStateHolder()
     BackHandler(onBack = onVoltar)
@@ -86,7 +73,7 @@ fun DispositivoDetalhesScreen(onVoltar: () -> Unit, modifier: Modifier = Modifie
                         navigationIconContentColor = TextWhite
                     )
                 )
-                ResumoDispositivo()
+                if (dispositivo != null) ResumoDispositivo(dispositivo)
                 SecondaryTabRow(
                     selectedTabIndex = aba.ordinal,
                     containerColor = DarkBackground,
@@ -107,40 +94,48 @@ fun DispositivoDetalhesScreen(onVoltar: () -> Unit, modifier: Modifier = Modifie
         }
     ) { padding ->
         val conteudo = Modifier.fillMaxSize().padding(padding)
+        if (dispositivo == null) {
+            Box(conteudo, contentAlignment = Alignment.Center) {
+                Text("Dispositivo não encontrado.", color = TextSubtle)
+            }
+            return@Scaffold
+        }
         estadoAbas.SaveableStateProvider(aba.name) {
             when (aba) {
-                AbaDetalhes.TELEMETRIA -> TelemetriaDetalhes(conteudo)
-                AbaDetalhes.HARDWARE -> HardwareDetalhes(conteudo)
-                AbaDetalhes.HISTORICO -> HistoricoDetalhes(conteudo)
+                AbaDetalhes.TELEMETRIA -> TelemetriaDetalhes(dispositivo, conteudo)
+                AbaDetalhes.HARDWARE -> HardwareDetalhes(dispositivo, conteudo)
+                AbaDetalhes.HISTORICO -> HistoricoDetalhes(eventos.filter { it.dispositivoId == dispositivo.id }, conteudo)
             }
         }
     }
 }
 
 @Composable
-private fun ResumoDispositivo() {
+private fun ResumoDispositivo(dispositivo: DispositivoConectividade) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(DispositivoExemplo.codigo, Modifier.weight(1f), fontSize = 20.sp,
+            Text(dispositivo.codigo, Modifier.weight(1f), fontSize = 20.sp,
                 fontWeight = FontWeight.Bold, color = valorTecnico)
-            SeloDetalhes("● ${DispositivoExemplo.status}", ToneGreenBg, ToneGreenText)
+            val (cor, fundo) = coresConexao(dispositivo.status)
+            SeloDetalhes("● ${dispositivo.status}", fundo, cor)
         }
-        Text(DispositivoExemplo.nome, fontSize = 14.sp, color = TextSubtle)
-        Text("${DispositivoExemplo.setor} / ${DispositivoExemplo.local}", fontSize = 12.sp, color = TextSubtle)
+        Text(dispositivo.nome, fontSize = 14.sp, color = TextSubtle)
+        Text("Dados simulados", fontSize = 12.sp, color = ToneBlueText)
+        Text(listOf(dispositivo.setor, dispositivo.local).filter { it.isNotBlank() }.joinToString(" / ").ifEmpty { "—" },
+            fontSize = 12.sp, color = TextSubtle)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Icon(Icons.Outlined.Schedule, contentDescription = null, modifier = Modifier.size(14.dp), tint = rotuloTecnico)
-            Text("Último contato: há 3s", fontSize = 12.sp, color = rotuloTecnico)
+            Text("Último contato: ${dispositivo.ultimoContato}", fontSize = 12.sp, color = rotuloTecnico)
         }
-        Text("Dados de exemplo", style = MaterialTheme.typography.labelMedium, color = ToneBlueText)
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TelemetriaDetalhes(modifier: Modifier) {
+private fun TelemetriaDetalhes(dispositivo: DispositivoConectividade, modifier: Modifier) {
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(16.dp),
@@ -154,22 +149,22 @@ private fun TelemetriaDetalhes(modifier: Modifier) {
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     itemVerticalAlignment = Alignment.CenterVertically
                 ) {
-                    TituloSecao("Sensor $SensorPzem")
-                    SeloDetalhes("● Ao Vivo", ToneGreenBg, ToneGreenText)
+                    TituloSecao("Sensor")
+                    SeloDetalhes("Telemetria indisponível", ToneBlueBg, ToneBlueText)
                 }
                 telemetria.chunked(2).forEach { linha ->
                     Row(
                         modifier = Modifier.height(IntrinsicSize.Min),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        linha.forEach { (rotulo, valor) ->
+                        linha.forEach { rotulo ->
                             Surface(
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
                                 shape = RoundedCornerShape(12.dp),
                                 color = InputBackground,
                                 border = BorderStroke(1.dp, CardBorder)
                             ) {
-                                CampoTecnico(rotulo, valor, Modifier.padding(10.dp), destaque = true)
+                                CampoTecnico(rotulo, "—", Modifier.padding(10.dp), destaque = true)
                             }
                         }
                     }
@@ -180,7 +175,7 @@ private fun TelemetriaDetalhes(modifier: Modifier) {
             CardDetalhes {
                 CampoTecnico(
                     "Vínculo Hierárquico",
-                    "${DispositivoExemplo.local} › ${DispositivoExemplo.setor} › ${DispositivoExemplo.equipamento}"
+                    listOf(dispositivo.local, dispositivo.setor, dispositivo.equipamento).filter { it.isNotBlank() }.joinToString(" › ").ifEmpty { "—" }
                 )
             }
         }
@@ -188,7 +183,8 @@ private fun TelemetriaDetalhes(modifier: Modifier) {
 }
 
 @Composable
-private fun HardwareDetalhes(modifier: Modifier) {
+private fun HardwareDetalhes(dispositivo: DispositivoConectividade, modifier: Modifier) {
+    val cadastro = dispositivo.cadastro
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(16.dp),
@@ -197,58 +193,60 @@ private fun HardwareDetalhes(modifier: Modifier) {
         item {
             CardDetalhes {
                 TituloSecao("Especificações do Dispositivo")
-                LinhaTecnica("Modelo" to DispositivoExemplo.tipo, "Nº Série" to "WV-ESP-001")
-                LinhaTecnica("Firmware" to "v1.3.0", "Intervalo" to "5 s")
-                CampoTecnico("Ponto de Medição", "$SensorPzem · PZEM-A1B2C3")
-                CampoCopiavel("MAC Address", "24:6F:28:A1:0B:01")
-                CampoTecnico("Data de Instalação", "11/03/2026")
+                LinhaTecnica("Modelo" to dispositivo.tipo, "Nº Série" to (cadastro.numero_serie ?: "—"))
+                LinhaTecnica("Firmware" to (cadastro.versao_firmware ?: "—"), "Intervalo" to (cadastro.tx_interval_sec?.let { "$it s" } ?: "—"))
+                CampoTecnico("Ponto de Medição", "—")
+                CampoCopiavel("MAC Address", cadastro.mac_address ?: "—")
+                CampoTecnico("Data de Instalação", cadastro.data_instalacao ?: "—")
             }
         }
         item {
             CardDetalhes {
                 TituloSecao("Conexão Wi-Fi")
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CampoTecnico("Rede (SSID)", "WattVision-IoT", Modifier.weight(1f))
-                    CampoCopiavel("Endereço IP", "192.168.1.42", Modifier.weight(1.35f))
+                    CampoTecnico("Rede (SSID)", cadastro.ssid ?: "—", Modifier.weight(1f))
+                    CampoCopiavel("Endereço IP", cadastro.ip ?: "—", Modifier.weight(1.35f))
                 }
             }
         }
         item {
             CardDetalhes {
                 TituloSecao("Configurações MQTT")
-                SeloDetalhes("Configuração atual de teste", ToneBlueBg, ToneBlueText)
-                CampoCopiavel("Broker", "broker.hivemq.com")
-                CampoTecnico("Porta", "1883")
-                CampoCopiavel("Tópico", "wattvision/medicoes")
-                CampoTecnico("Client ID", "wattvision-esp32-")
+                SeloDetalhes(dispositivo.comunicacao, ToneBlueBg, ToneBlueText)
+                CampoCopiavel("Broker", cadastro.broker ?: "—")
+                CampoTecnico("Porta", cadastro.port?.toString() ?: "—")
+                CampoCopiavel("Tópico", cadastro.topic ?: "—")
+                CampoTecnico("Client ID", cadastro.client_id ?: "—")
             }
         }
     }
 }
 
 @Composable
-private fun HistoricoDetalhes(modifier: Modifier) {
+private fun HistoricoDetalhes(eventos: List<EventoConectividade>, modifier: Modifier) {
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item { TituloSecao("Histórico de Conexão e Eventos") }
-        items(eventosConexao, key = { it.horario }) { evento ->
+        if (eventos.isEmpty()) item { Text("Nenhum evento disponível.", color = TextSubtle) }
+        items(eventos, key = { it.id }) { evento ->
+            val reconectado = evento.evento == "Reconectado"
             CardDetalhes {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val cor = if (evento.conectado) ToneGreenText else ToneYellowText
+                    val cor = if (reconectado) ToneGreenText else ToneYellowText
                     Box(Modifier.size(8.dp).background(cor, CircleShape))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(if (evento.conectado) "Conectado" else "Queda de Conexão",
+                        Text(if (reconectado) "Conectado" else "Queda de Conexão",
                             fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = valorTecnico)
-                        Text(evento.horario, fontSize = 12.sp, color = rotuloTecnico)
+                        Text(evento.momento.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")), fontSize = 12.sp, color = rotuloTecnico)
                     }
-                    Text(evento.duracao, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = cor)
+                    Text("—", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = cor)
                 }
             }
         }
@@ -262,7 +260,7 @@ private fun CampoCopiavel(rotulo: String, valor: String, modifier: Modifier = Mo
     val scope = rememberCoroutineScope()
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         CampoTecnico(rotulo, valor, Modifier.weight(1f))
-        IconButton(onClick = {
+        IconButton(enabled = valor != "—", onClick = {
             scope.launch {
                 clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(rotulo, valor)))
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {

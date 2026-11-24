@@ -11,7 +11,7 @@ class ChartLogicTest {
     private val now = LocalDateTime.parse("2026-11-17T12:00:00")
     private val today = ChartLogic.period("Hoje", now)!!
     private fun row(id: Int, date: String = "2026-11-17 10:00:00", value: Any? = 220.0, point: Int = 4) =
-        MedicaoDto(id_medicao = id, id_pzem = 9, id_ponto_medicao = point, data_hora = date,
+        MedicaoDto(id_medicao = id.toLong(), id_pzem = 9, id_ponto_medicao = point, data_hora = date,
             tensaoRaw = value, correnteRaw = 1.2, potenciaAtivaRaw = 1500, energiaAcumuladaRaw = 12.5,
             frequenciaRaw = 60.0, fatorPotenciaRaw = 0.95)
 

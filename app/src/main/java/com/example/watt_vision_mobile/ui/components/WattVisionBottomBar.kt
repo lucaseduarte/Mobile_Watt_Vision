@@ -1,6 +1,7 @@
 package com.example.watt_vision_mobile.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -31,12 +32,17 @@ fun WattVisionBottomBar(
     onRouteSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val navigationInsets = NavigationBarDefaults.windowInsets
+    // Material 3 applies the inset inside the bar, so include it in the total height.
+    val barHeight = 64.dp + navigationInsets.asPaddingValues().calculateBottomPadding()
+
     NavigationBar(
         modifier = modifier
-            .height(64.dp)
+            .height(barHeight)
             .background(InputBackground),
         containerColor = InputBackground,
-        tonalElevation = 8.dp
+        tonalElevation = 8.dp,
+        windowInsets = navigationInsets
     ) {
         wattVisionBottomNavItems.forEach { item ->
             val isSelected = selectedRoute == item.title
