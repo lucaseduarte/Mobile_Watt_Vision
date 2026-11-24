@@ -13,7 +13,8 @@ import retrofit2.http.POST
 internal class AuthInterceptor(
     private val currentCredential: () -> SessionCredential?,
     private val rejectIfCurrent: (SessionCredential) -> Unit,
-    private val localSeriesEnabled: Boolean = false
+    private val localSeriesEnabled: Boolean = false,
+    private val localSeriesPort: Int? = 13000
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
@@ -43,7 +44,7 @@ internal class AuthInterceptor(
     private fun permiteConsultaLocal(request: Request): Boolean {
         if (!BuildConfig.DEBUG || !localSeriesEnabled || request.method != "GET") return false
         val url = request.url
-        if (url.scheme != "http" || url.host != "127.0.0.1" || url.port != 13000 ||
+        if (url.scheme != "http" || url.host != "127.0.0.1" || url.port != localSeriesPort ||
             url.username.isNotEmpty() || url.password.isNotEmpty() || url.fragment != null) return false
 
         val method = request.tag(Invocation::class.java)?.method() ?: return false
@@ -82,6 +83,12 @@ internal class AuthInterceptor(
     }
 }
 
+internal val portaConsultaLocal: Int?
+    get() = when (BuildConfig.API_BASE_URL) {
+        "http://127.0.0.1:13000/" -> 13000
+        "http://127.0.0.1:3000/" -> 3000
+        else -> null
+    }
+
 internal val integracaoLocal: Boolean
-    get() = BuildConfig.DEBUG && BuildConfig.LOCAL_SERIES_ENABLED &&
-        BuildConfig.API_BASE_URL == "http://127.0.0.1:13000/"
+    get() = BuildConfig.DEBUG && BuildConfig.LOCAL_SERIES_ENABLED && portaConsultaLocal != null

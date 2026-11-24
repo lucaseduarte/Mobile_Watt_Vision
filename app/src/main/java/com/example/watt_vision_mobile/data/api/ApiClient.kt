@@ -22,7 +22,8 @@ object ApiClient {
             val authInterceptor = AuthInterceptor(
                 currentCredential = { AuthRepository.getInstance(app).currentCredential() },
                 rejectIfCurrent = { AuthRepository.getInstance(app).rejectIfCurrent(it) },
-                localSeriesEnabled = integracaoLocal
+                localSeriesEnabled = integracaoLocal,
+                localSeriesPort = portaConsultaLocal
             )
 
             val baseUrl = BuildConfig.API_BASE_URL

@@ -3,7 +3,7 @@ package com.example.watt_vision_mobile.ui.screens.medicoes
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.watt_vision_mobile.BuildConfig
+import com.example.watt_vision_mobile.data.api.integracaoLocal
 import com.example.watt_vision_mobile.data.repository.AuthRepository
 import com.example.watt_vision_mobile.data.repository.DashboardRepository
 import com.example.watt_vision_mobile.data.repository.SessionCredential
@@ -157,8 +157,7 @@ internal class SerieRealViewModel(application: Application) : AndroidViewModel(a
     private val auth = AuthRepository.getInstance(application)
     private val repositorio by lazy { DashboardRepository(application) }
 
-    val habilitada = BuildConfig.DEBUG && BuildConfig.LOCAL_SERIES_ENABLED &&
-        BuildConfig.API_BASE_URL == "http://10.0.2.2:3000/"
+    val habilitada = integracaoLocal
 
     val fonte = FonteSerieReal(
         viewModelScope,
