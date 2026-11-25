@@ -1,26 +1,38 @@
 package com.example.watt_vision_mobile
 
+import android.Manifest
 import android.app.Application
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.SavedStateHandle
+import com.example.watt_vision_mobile.data.api.ConfiguracaoApi
+import com.example.watt_vision_mobile.data.api.URL_API_EMULADOR
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
@@ -59,13 +71,32 @@ private const val ROTA_DETALHES_DISPOSITIVO = "Detalhes do dispositivo"
 
 class MainActivity : ComponentActivity() {
 
-    private val loginViewModel: LoginViewModel by viewModels()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ConfiguracaoApi.restaurar(applicationContext)
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
         setContent {
             WattVisionTheme {
+                var apiUrl by remember { mutableStateOf(ConfiguracaoApi.url) }
+                val usaConfiguracaoWifi = ConfiguracaoApi.permiteConfigurarWifi &&
+                    Build.HARDWARE !in listOf("ranchu", "goldfish")
+                var editandoIp by rememberSaveable {
+                    mutableStateOf(usaConfiguracaoWifi && apiUrl == URL_API_EMULADOR)
+                }
+                if (editandoIp) {
+                    ConfigurarBackendWifi(apiUrl, cancelar = { editandoIp = false }) { ip ->
+                        if (!ConfiguracaoApi.salvarWifi(applicationContext, ip)) return@ConfigurarBackendWifi false
+                        apiUrl = ConfiguracaoApi.url
+                        editandoIp = false
+                        true
+                    }
+                    return@WattVisionTheme
+                }
+                if (!acessoAoBackendLocal(apiUrl)) return@WattVisionTheme
+                val loginViewModel = remember(apiUrl) {
+                    ViewModelProvider(this@MainActivity)[apiUrl, LoginViewModel::class.java]
+                }
+                val alterarIp: (() -> Unit)? = if (usaConfiguracaoWifi) ({ editandoIp = true }) else null
                 val session by loginViewModel.session.collectAsState()
                 when (val state = session) {
                     is SessionState.Authenticated -> key(state.generation) {
@@ -74,7 +105,7 @@ class MainActivity : ComponentActivity() {
                             loginViewModel.protectedStore(state.generation)
                         )
                     }
-                    is SessionState.SignedOut -> LoginScreen(viewModel = loginViewModel)
+                    is SessionState.SignedOut -> LoginScreen(viewModel = loginViewModel, onConfigureBackend = alterarIp)
                     is SessionState.Validating -> {
                         if (state.login) LoginScreen(viewModel = loginViewModel)
                         else SessionStatus()
@@ -83,8 +114,86 @@ class MainActivity : ComponentActivity() {
                     is SessionState.ValidationFailed -> SessionStatus(
                         message = state.failure.message,
                         onRetry = if (state.clearing) loginViewModel::logout else loginViewModel::retryValidation,
-                        onLogout = if (state.clearing) null else loginViewModel::logout
+                        onLogout = if (state.clearing) null else loginViewModel::logout,
+                        onConfigureBackend = if (state.clearing) null else alterarIp
                     )
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun acessoAoBackendLocal(apiUrl: String): Boolean {
+        if (!BuildConfig.DEBUG || Build.VERSION.SDK_INT < 37) return true
+        val origem = ConfiguracaoApi.origemLocal(apiUrl) ?: return true
+        if (origem.host == "127.0.0.1") return true
+
+        val permissao = Manifest.permission.ACCESS_LOCAL_NETWORK
+        var concedida by remember { mutableStateOf(checkSelfPermission(permissao) == PackageManager.PERMISSION_GRANTED) }
+        var tentativas by rememberSaveable { mutableIntStateOf(0) }
+        val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+            tentativas++
+            concedida = checkSelfPermission(permissao) == PackageManager.PERMISSION_GRANTED
+        }
+        DisposableEffect(lifecycle) {
+            val observer = LifecycleEventObserver { _, evento ->
+                if (evento == Lifecycle.Event.ON_RESUME) {
+                    concedida = checkSelfPermission(permissao) == PackageManager.PERMISSION_GRANTED
+                }
+            }
+            lifecycle.addObserver(observer)
+            onDispose { lifecycle.removeObserver(observer) }
+        }
+        if (concedida) return true
+
+        val abrirConfiguracoes = tentativas > 0 && !shouldShowRequestPermissionRationale(permissao)
+        Surface(Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
+            ) {
+                Text("O Watt Vision precisa de acesso à rede local para consultar o Backend deste notebook.")
+                Button(onClick = {
+                    if (abrirConfiguracoes) {
+                        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
+                    } else {
+                        launcher.launch(permissao)
+                    }
+                }) {
+                    Text(if (abrirConfiguracoes) "Abrir configurações" else "Permitir acesso à rede local")
+                }
+            }
+        }
+        return false
+    }
+
+    @Composable
+    private fun ConfigurarBackendWifi(apiUrl: String, cancelar: () -> Unit, salvar: (String) -> Boolean) {
+        var ip by rememberSaveable { mutableStateOf(
+            ConfiguracaoApi.origemLocal(apiUrl)?.host?.takeIf { apiUrl != URL_API_EMULADOR }.orEmpty()
+        ) }
+        var invalido by rememberSaveable { mutableStateOf(false) }
+        Surface(Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
+            ) {
+                Text("Backend por Wi-Fi", style = MaterialTheme.typography.headlineSmall)
+                Text("Conecte o celular e o notebook à mesma rede. Informe o IPv4 do notebook para acessar a porta 3000.")
+                OutlinedTextField(
+                    value = ip,
+                    onValueChange = { ip = it; invalido = false },
+                    label = { Text("IPv4 do notebook") },
+                    placeholder = { Text("192.168.1.20") },
+                    singleLine = true,
+                    isError = invalido,
+                    supportingText = if (invalido) ({ Text("Informe um endereço IPv4 de rede privada.") }) else null
+                )
+                Button(onClick = { invalido = !salvar(ip) }) { Text("Salvar endereço") }
+                if (apiUrl != URL_API_EMULADOR) {
+                    TextButton(onClick = cancelar) { Text("Cancelar") }
                 }
             }
         }
@@ -94,7 +203,8 @@ class MainActivity : ComponentActivity() {
     private fun SessionStatus(
         message: String? = null,
         onRetry: (() -> Unit)? = null,
-        onLogout: (() -> Unit)? = null
+        onLogout: (() -> Unit)? = null,
+        onConfigureBackend: (() -> Unit)? = null
     ) {
         Surface(Modifier.fillMaxSize()) {
             Column(
@@ -108,6 +218,7 @@ class MainActivity : ComponentActivity() {
                     Text(message)
                     onRetry?.let { TextButton(onClick = it) { Text("Tentar novamente") } }
                     onLogout?.let { TextButton(onClick = it) { Text("Sair da conta") } }
+                    onConfigureBackend?.let { TextButton(onClick = it) { Text("Configurar Backend Wi-Fi") } }
                 }
             }
         }

@@ -1,6 +1,27 @@
 # Guia de apresentação do Watt Vision
 
-## Pré-requisitos e revisões
+## Apresentação no emulador com o Backend padrão
+
+1. No notebook, mantenha o MySQL local `db_watt_vision` e o Backend Node.js padrão ativos. O Backend precisa responder na porta 3000 e a base precisa ter a conta e os dados da demonstração.
+2. Atualize o projeto Android pelo Git do Android Studio, deixe a sincronização terminar e selecione um Android Emulator. Execute a variante **Debug** pelo botão **Run**. O app usa `http://10.0.2.2:3000/`, o endereço do notebook visto pelo emulador. Em Android 17, toque em **Permitir acesso à rede local** e aceite a permissão do sistema.
+3. Entre com `admin@wattvision.com` e a senha cadastrada na base local. No Dashboard e em Medições, selecione um equipamento vinculado a um único medidor e um período que inclua as leituras. Cada tela consulta novamente cinco segundos depois da resposta anterior enquanto estiver em primeiro plano. O botão **Atualizar** continua disponível.
+4. Para apresentar, compartilhe a janela do emulador ou a tela do notebook. A conexão do app com o Backend usa o próprio notebook. O espelhamento sem fio depende do método usado para projetar.
+
+O fluxo padrão dispensa PowerShell, `adb reverse` e propriedades Gradle locais para o Android. Se existirem substituições de ensaios anteriores em `wattVisionDebugApiUrl` ou `wattVisionDebugLocalSeries` no Gradle User Home, remova-as para usar os padrões do projeto. A preparação inicial do Backend, do MySQL e do AVD é feita no notebook da apresentação. Use o procedimento padrão do Backend para iniciá-lo antes do Run.
+
+## Android físico com depuração Wi-Fi
+
+1. Conecte o celular e o notebook à mesma rede Wi-Fi, pareie o celular no Android Studio e use **Run** com a variante Debug.
+2. No Windows, abra **Configurações → Rede e Internet → Wi-Fi → Propriedades** e copie o **Endereço IPv4** do notebook. Digite esse IP em **Backend por Wi-Fi** no celular e toque em **Salvar endereço**. No Android 17, aceite a permissão de rede local se solicitada.
+3. O app usa o IP salvo na porta 3000. Essa configuração fica no celular e é reaproveitada nas próximas instalações pelo Run. Se o IP do notebook mudar, toque em **Configurar Backend Wi-Fi** na tela de login para atualizá-lo.
+
+O celular precisa alcançar o Backend na porta 3000 pela rede. O pareamento do Android Studio usa uma conexão separada. Para o TCC em uma rede que bloqueie conexões entre dispositivos, use o emulador no notebook.
+
+## Roteiro histórico do ensaio com banco descartável
+
+As seções abaixo registram o ensaio anterior, com conta e lançador próprios. Use esse roteiro somente em uma instância descartável dedicada.
+
+### Pré-requisitos e revisões
 
 - Windows com Android Studio compatível com AGP 9.5.1, JDK 25 para o Gradle, Android SDK Platform 37, Platform Tools e virtualização. Crie um AVD API 37. Use o Gradle Wrapper 9.6.0 deste repositório.
 - Node.js 24.13.0 e npm 11.6.2 são as versões usadas no ensaio. MySQL 8.0.46 foi a versão de referência. Prepare **uma instância MySQL descartável**, separada de qualquer base existente, com escuta em loopback.

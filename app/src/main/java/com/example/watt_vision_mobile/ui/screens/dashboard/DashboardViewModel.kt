@@ -62,12 +62,22 @@ class DashboardViewModel internal constructor(
         if (ativa) loadDashboardData()
     }
 
+    internal suspend fun atualizarAutomaticamente() {
+        if (!integracaoLocal || fonte != null) return
+        val consulta = carga?.takeIf { it.isActive } ?: carregarDashboard(preservarLeituras = true)
+        consulta?.join()
+    }
+
     fun loadDashboardData() {
+        carregarDashboard()
+    }
+
+    private fun carregarDashboard(preservarLeituras: Boolean = false): Job? {
         val estado = _uiState.value
-        if (fonte == null && !integracaoLocal || fonte != null && !estado.simulated) return
+        if (fonte == null && !integracaoLocal || fonte != null && !estado.simulated) return null
         carga?.cancel()
         val filtros = estado.filters
-        _uiState.update { it.copy(
+        if (!preservarLeituras) _uiState.update { it.copy(
             isLoading = true,
             lastUpdatedText = "Carregando medições",
             chart = ChartState(ChartStatus.LOADING),
@@ -110,9 +120,15 @@ class DashboardViewModel internal constructor(
                 throw cancelled
             } catch (erro: Exception) {
                 ensureActive()
-                concluir(ChartState(if (erro is HttpException && erro.code() == 403) ChartStatus.FORBIDDEN else ChartStatus.ERROR))
+                val proibido = erro is HttpException && erro.code() in listOf(401, 403)
+                if (preservarLeituras && !proibido && _uiState.value.chart.status == ChartStatus.READY) {
+                    _uiState.update { it.copy(lastUpdatedText = "Falha na atualização. Exibindo a última consulta.") }
+                } else {
+                    concluir(ChartState(if (proibido) ChartStatus.FORBIDDEN else ChartStatus.ERROR))
+                }
             }
         }
+        return carga
     }
 
     private fun concluir(chart: ChartState, pontos: List<MedicaoPoint> = emptyList(), cards: List<StatCardData> = emptyList()) {

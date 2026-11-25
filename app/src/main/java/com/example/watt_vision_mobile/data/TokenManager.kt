@@ -20,15 +20,17 @@ internal interface TokenStore {
     fun clear()
 }
 
-internal class TokenManager(context: Context) : TokenStore {
+internal class TokenManager(context: Context, private val baseUrl: String = BuildConfig.API_BASE_URL) : TokenStore {
     // Este arquivo já está excluído das três modalidades de backup.
     private val prefs = context.getSharedPreferences("watt_vision_prefs", Context.MODE_PRIVATE)
+
+    private val tokenKey = if (baseUrl == BuildConfig.API_BASE_URL) ENCRYPTED_TOKEN else "$ENCRYPTED_TOKEN:$baseUrl"
 
     override fun read(): String? {
         if (prefs.contains(LEGACY_TOKEN)) {
             checkWrite(prefs.edit().remove(LEGACY_TOKEN).commit())
         }
-        val encrypted = prefs.getString(ENCRYPTED_TOKEN, null) ?: return null
+        val encrypted = prefs.getString(tokenKey, null) ?: return null
         return try {
             val (iv, ciphertext) = encrypted.split('.', limit = 2).also {
                 require(it.size == 2)
@@ -68,11 +70,11 @@ internal class TokenManager(context: Context) : TokenStore {
         val encoder = Base64.getEncoder()
         val iv = encoder.encodeToString(cipher.iv)
         val ciphertext = encoder.encodeToString(cipher.doFinal(token.toByteArray(Charsets.UTF_8)))
-        checkWrite(prefs.edit().remove(LEGACY_TOKEN).putString(ENCRYPTED_TOKEN, "$iv.$ciphertext").commit())
+        checkWrite(prefs.edit().remove(LEGACY_TOKEN).putString(tokenKey, "$iv.$ciphertext").commit())
     }
 
     override fun clear() {
-        if (!prefs.edit().remove(LEGACY_TOKEN).remove(ENCRYPTED_TOKEN).commit()) {
+        if (!prefs.edit().remove(LEGACY_TOKEN).remove(tokenKey).commit()) {
             // Revoga a capacidade de decifrar um token que possa ter restado em disco.
             keyStore().deleteEntry(KEY_ALIAS)
             throw IOException("Falha ao limpar as preferências de autenticação.")
@@ -88,7 +90,7 @@ internal class TokenManager(context: Context) : TokenStore {
         init(Cipher.ENCRYPT_MODE, key)
     }
 
-    private fun environment() = "${BuildConfig.BUILD_TYPE}:${BuildConfig.API_BASE_URL}".toByteArray(Charsets.UTF_8)
+    private fun environment() = "${BuildConfig.BUILD_TYPE}:$baseUrl".toByteArray(Charsets.UTF_8)
 
     private fun keyStore() = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
 

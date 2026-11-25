@@ -38,7 +38,8 @@ import com.example.watt_vision_mobile.ui.theme.*
 fun LoginScreen(
     viewModel: LoginViewModel,
     onForgotPasswordClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onConfigureBackend: (() -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -236,6 +237,11 @@ fun LoginScreen(
                 }
             }
 
+            if (onConfigureBackend != null) {
+                TextButton(onClick = onConfigureBackend, enabled = !uiState.isLoading) {
+                    Text("Configurar Backend Wi-Fi")
+                }
+            }
             Spacer(modifier = Modifier.height(28.dp))
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {

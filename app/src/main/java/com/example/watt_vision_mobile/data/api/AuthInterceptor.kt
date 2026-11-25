@@ -14,7 +14,8 @@ internal class AuthInterceptor(
     private val currentCredential: () -> SessionCredential?,
     private val rejectIfCurrent: (SessionCredential) -> Unit,
     private val localSeriesEnabled: Boolean = false,
-    private val localSeriesPort: Int? = 13000
+    private val localSeriesPort: Int? = 13000,
+    private val localSeriesHost: String = "127.0.0.1"
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
@@ -44,7 +45,7 @@ internal class AuthInterceptor(
     private fun permiteConsultaLocal(request: Request): Boolean {
         if (!BuildConfig.DEBUG || !localSeriesEnabled || request.method != "GET") return false
         val url = request.url
-        if (url.scheme != "http" || url.host != "127.0.0.1" || url.port != localSeriesPort ||
+        if (url.scheme != "http" || url.host != localSeriesHost || url.port != localSeriesPort ||
             url.username.isNotEmpty() || url.password.isNotEmpty() || url.fragment != null) return false
 
         val method = request.tag(Invocation::class.java)?.method() ?: return false
@@ -83,12 +84,8 @@ internal class AuthInterceptor(
     }
 }
 
-internal val portaConsultaLocal: Int?
-    get() = when (BuildConfig.API_BASE_URL) {
-        "http://127.0.0.1:13000/" -> 13000
-        "http://127.0.0.1:3000/" -> 3000
-        else -> null
-    }
+internal const val URL_API_EMULADOR = "http://10.0.2.2:3000/"
 
 internal val integracaoLocal: Boolean
-    get() = BuildConfig.DEBUG && BuildConfig.LOCAL_SERIES_ENABLED && portaConsultaLocal != null
+    get() = BuildConfig.DEBUG && BuildConfig.LOCAL_SERIES_ENABLED &&
+        ConfiguracaoApi.origemLocal(ConfiguracaoApi.url) != null

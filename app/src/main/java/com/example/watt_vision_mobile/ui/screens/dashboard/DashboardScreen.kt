@@ -5,10 +5,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import com.example.watt_vision_mobile.data.api.integracaoLocal
+import kotlinx.coroutines.delay
 import com.example.watt_vision_mobile.ui.theme.DarkBackground
 import com.example.watt_vision_mobile.ui.screens.dashboard.components.*
 
@@ -19,6 +25,17 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    if (integracaoLocal && !viewModel.demonstracaoDisponivel) {
+        val lifecycle = LocalLifecycleOwner.current.lifecycle
+        LaunchedEffect(lifecycle, viewModel) {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    viewModel.atualizarAutomaticamente()
+                    delay(5_000)
+                }
+            }
+        }
+    }
 
     Box(
         modifier = modifier

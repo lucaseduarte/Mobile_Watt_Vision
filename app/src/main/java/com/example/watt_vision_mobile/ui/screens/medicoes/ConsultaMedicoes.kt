@@ -1,6 +1,11 @@
 package com.example.watt_vision_mobile.ui.screens.medicoes
 
 import androidx.compose.runtime.*
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
+import retrofit2.HttpException
 import com.example.watt_vision_mobile.model.AVISO_LIMITE_SERIE_TEMPORAL
 import com.example.watt_vision_mobile.model.LIMITE_REGISTROS_SERIE_TEMPORAL
 import com.example.watt_vision_mobile.model.MedicaoDto
@@ -75,7 +80,8 @@ internal fun consultarMedicoes(
     revisao: Int,
     atualizar: () -> Unit
 ): ConsultaMedicoes {
-    return key(fonte, filtros, revisao) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    return key(fonte, filtros, revisao, lifecycle) {
         val consulta by produceState(ConsultaMedicoes(catalogo = fonte.catalogo, carregando = true)) {
             val (pzem, estado) = fonte.catalogo.resolve(filtros)
             if (pzem == null) {
@@ -88,28 +94,38 @@ internal fun consultarMedicoes(
                 return@produceState
             }
 
-            val agora = java.time.ZonedDateTime.now(ZONA_SERIE_REAL)
-            val janela = janelaMedicoes(filtros.period, agora)
-            value = try {
-                val linhas = fonte.consultar(pzem, janela.horas)
-                currentCoroutineContext().ensureActive()
-                check(linhas.all { it.id_pzem == pzem })
-                val pontos = fonte.catalogo.scopedPointIds(filtros)
-                ConsultaMedicoes(
-                    catalogo = fonte.catalogo,
-                    serie = montarSerie(linhas, filtros.metric, janela, agora.zone, pontos),
-                    registros = montarRegistros(linhas, janela, agora.zone, pontos),
-                    aviso = AVISO_LIMITE_SERIE_TEMPORAL.takeIf { linhas.size >= LIMITE_REGISTROS_SERIE_TEMPORAL }
-                )
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                currentCoroutineContext().ensureActive()
-                ConsultaMedicoes(
-                    catalogo = fonte.catalogo,
-                    aviso = "Não foi possível consultar as medições.",
-                    tentarNovamente = atualizar
-                )
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (true) {
+                    val agora = java.time.ZonedDateTime.now(ZONA_SERIE_REAL)
+                    val janela = janelaMedicoes(filtros.period, agora)
+                    value = try {
+                        val linhas = fonte.consultar(pzem, janela.horas)
+                        currentCoroutineContext().ensureActive()
+                        check(linhas.all { it.id_pzem == pzem })
+                        val pontos = fonte.catalogo.scopedPointIds(filtros)
+                        ConsultaMedicoes(
+                            catalogo = fonte.catalogo,
+                            serie = montarSerie(linhas, filtros.metric, janela, agora.zone, pontos),
+                            registros = montarRegistros(linhas, janela, agora.zone, pontos),
+                            aviso = AVISO_LIMITE_SERIE_TEMPORAL.takeIf { linhas.size >= LIMITE_REGISTROS_SERIE_TEMPORAL }
+                        )
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (erro: Exception) {
+                        currentCoroutineContext().ensureActive()
+                        val acessoNegado = erro is HttpException && erro.code() in listOf(401, 403)
+                        val anterior = if (acessoNegado) ConsultaMedicoes(catalogo = fonte.catalogo) else value
+                        anterior.copy(
+                            aviso = if (anterior.registros.isEmpty()) "Não foi possível consultar as medições."
+                                else "Falha na atualização. Exibindo a última consulta.",
+                            carregando = false,
+                            carregandoRegistros = false,
+                            avisoRegistros = null,
+                            tentarNovamente = atualizar
+                        )
+                    }
+                    delay(5_000)
+                }
             }
         }
         consulta

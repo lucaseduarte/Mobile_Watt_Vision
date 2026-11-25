@@ -34,7 +34,7 @@ class ReleaseApiBaseUrlField : Transformer<BuildConfigField<String>, String>, ja
 }
 
 val debugApiUrl = ReleaseApiBaseUrlField.normalizeApiBaseUrl(
-    providers.gradleProperty("wattVisionDebugApiUrl").getOrElse(""),
+    providers.gradleProperty("wattVisionDebugApiUrl").getOrElse("http://10.0.2.2:3000/"),
     "wattVisionDebugApiUrl",
     httpsRequired = false
 )
@@ -83,7 +83,7 @@ androidComponents {
         requireNotNull(variant.buildConfigFields).put(
             "API_BASE_URL", BuildConfigField("String", "\"$debugApiUrl\"", null)
         )
-        val localSeriesEnabled = providers.gradleProperty("wattVisionDebugLocalSeries").orNull == "true"
+        val localSeriesEnabled = providers.gradleProperty("wattVisionDebugLocalSeries").getOrElse("true") == "true"
         requireNotNull(variant.buildConfigFields).put(
             "LOCAL_SERIES_ENABLED", BuildConfigField("boolean", localSeriesEnabled.toString(), null)
         )

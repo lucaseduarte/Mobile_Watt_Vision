@@ -5,6 +5,7 @@ import com.example.watt_vision_mobile.data.TokenManager
 import com.example.watt_vision_mobile.data.TokenStore
 import com.example.watt_vision_mobile.data.api.ApiClient
 import com.example.watt_vision_mobile.data.api.AuthApiService
+import com.example.watt_vision_mobile.data.api.ConfiguracaoApi
 import com.example.watt_vision_mobile.model.LoginRequest
 import com.example.watt_vision_mobile.model.UsuarioDto
 import com.google.gson.JsonParser
@@ -197,14 +198,15 @@ internal class AuthRepository(
         if (error is IOException) AuthFailure.NETWORK else AuthFailure.INVALID_RESPONSE
 
     companion object {
-        @Volatile private var instance: AuthRepository? = null
+        private val repositorios = mutableMapOf<String, AuthRepository>()
 
-        fun getInstance(context: Context): AuthRepository = instance ?: synchronized(this) {
-            instance ?: context.applicationContext.let { app ->
-                AuthRepository(ApiClient.createService<AuthApiService>(app), TokenManager(app))
-                    .also { instance = it }
+        @Synchronized
+        fun getInstance(context: Context, baseUrl: String = ConfiguracaoApi.url): AuthRepository =
+            repositorios.getOrPut(baseUrl) {
+                val app = context.applicationContext
+                val api = ApiClient.getRetrofit(app, baseUrl).create(AuthApiService::class.java)
+                AuthRepository(api, TokenManager(app, baseUrl))
             }
-        }
     }
 }
 

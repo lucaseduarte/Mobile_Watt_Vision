@@ -27,7 +27,9 @@ class AuthInterceptorLocalSeriesTest {
 
     private class Transport(
         enabled: Boolean = true,
-        var credential: SessionCredential? = SessionCredential("fixture")
+        var credential: SessionCredential? = SessionCredential("fixture"),
+        host: String = "127.0.0.1",
+        port: Int = 13000
     ) {
         val requests = mutableListOf<Request>()
         var status = 200
@@ -36,7 +38,7 @@ class AuthInterceptorLocalSeriesTest {
         private val client = OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor({ credential }, { rejected ->
                 if (credential === rejected) credential = null
-            }, enabled))
+            }, enabled, port, host))
             .addInterceptor { chain ->
                 requests += chain.request()
                 onRequest()
@@ -100,6 +102,17 @@ class AuthInterceptorLocalSeriesTest {
             series("id_pzem=1")
         )
         forbidden.forEach { Transport().assertBlocked(it) }
+    }
+
+    @Test fun emulatorOriginAcceptsOnlyConfiguredHostAndPort() {
+        assumeTrue(BuildConfig.DEBUG)
+        val transport = Transport(host = "10.0.2.2", port = 3000)
+        transport.assertBlocked(series())
+        val request = series().newBuilder()
+            .url("${URL_API_EMULADOR}api/medicoes/serie-temporal?id_pzem=1&horas=24")
+            .build()
+        assertEquals(200, transport.execute(request))
+        assertEquals("Bearer fixture", transport.requests.single().header("Authorization"))
     }
 
     @Test fun sessionIsRequiredEvenWithCallerSuppliedBearer() {
