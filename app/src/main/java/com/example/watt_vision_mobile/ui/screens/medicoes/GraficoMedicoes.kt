@@ -4,13 +4,16 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.DraggableState
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.example.watt_vision_mobile.ui.theme.corTema
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -35,22 +38,25 @@ import com.example.watt_vision_mobile.ui.screens.dashboard.ChartMetric
 import com.example.watt_vision_mobile.ui.theme.LinkBlue
 import com.example.watt_vision_mobile.ui.theme.Slate900
 import com.example.watt_vision_mobile.ui.theme.SurfaceDark
-import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 
-private val FundoGrafico = Color(0xFF0F1627)
-private val BordaGrafico = Color(0xFF253246)
-private val CorTitulo = Color(0xFFF1F5F9)
-private val CorEixos = Color(0xFF94A3B8)
-private val CorGrade = Color(0xFF334155)
-private val estiloEixos = TextStyle(color = CorEixos, fontSize = 10.sp)
+private val FundoGrafico
+    @Composable get() = corTema(0xFF0F1627, 0xFFFFFFFF)
+private val BordaGrafico
+    @Composable get() = corTema(0xFF253246, 0xFFCBD8E7)
+private val CorTitulo
+    @Composable get() = corTema(0xFFF1F5F9, 0xFF111827)
+private val CorEixos
+    @Composable get() = corTema(0xFF94A3B8, 0xFF475569)
+private val CorGrade
+    @Composable get() = corTema(0xFF334155, 0xFFCBD5E1)
 
-private val passosTempo = listOf(1, 2, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440, 2880, 4320, 10080)
-    .map { it * 60L }
+private val passosTempo = listOf(1L, 2L, 5L, 10L, 15L, 30L) +
+    listOf(1, 2, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440, 2880, 4320, 10080).map { it * 60L }
 
 @Composable
 internal fun GraficoMedicoes(
@@ -61,11 +67,11 @@ internal fun GraficoMedicoes(
 ) {
     val corCurva = when (grandeza) {
         ChartMetric.VOLTAGE -> LinkBlue
-        ChartMetric.CURRENT -> Color(0xFF22C55E)
-        ChartMetric.POWER -> Color(0xFF14B8A6)
-        ChartMetric.ENERGY -> Color(0xFFEAB308)
-        ChartMetric.FREQUENCY -> Color(0xFFA855F7)
-        ChartMetric.POWER_FACTOR -> Color(0xFFF97316)
+        ChartMetric.CURRENT -> corTema(0xFF22C55E, 0xFF166534)
+        ChartMetric.POWER -> corTema(0xFF14B8A6, 0xFF0F766E)
+        ChartMetric.ENERGY -> corTema(0xFFEAB308, 0xFF854D0E)
+        ChartMetric.FREQUENCY -> corTema(0xFFA855F7, 0xFF7E22CE)
+        ChartMetric.POWER_FACTOR -> corTema(0xFFF97316, 0xFF9A3412)
     }
     val total = consulta.serie.amostras.size
     Surface(
@@ -96,7 +102,9 @@ internal fun GraficoMedicoes(
                 }
             }
             if (total > 0) {
-                PlotMedicoes(consulta.serie, grandeza.label, unidade, corCurva, consulta.zona)
+                key(grandeza, periodo, consulta.registros.firstOrNull()?.dados?.id_pzem) {
+                    JanelaGraficoMedicoes(consulta.serie, grandeza.label, unidade, corCurva, consulta.zona, periodo != "Ontem")
+                }
             } else {
                 Box(Modifier.fillMaxWidth().height(186.dp), contentAlignment = Alignment.Center) {
                     if (consulta.carregando) {
@@ -128,25 +136,91 @@ private data class TrechoPlot(val inicio: AmostraMedicao, val seguintes: List<Pa
 private data class ParcelaPlot(val fim: AmostraMedicao, val curva: ControlesMonotonicos)
 
 @Composable
-private fun PlotMedicoes(serie: SerieMedicoes, grandeza: String, unidade: String, corCurva: Color, zona: ZoneId) {
+private fun JanelaGraficoMedicoes(
+    serie: SerieMedicoes,
+    grandeza: String,
+    unidade: String,
+    corCurva: Color,
+    zona: ZoneId,
+    acompanhar: Boolean
+) {
     val amostras = serie.amostras
+    var ancora by remember { mutableStateOf<Instant?>(null) }
+    var deslocamento by remember { mutableFloatStateOf(0f) }
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val quantidade = ((maxWidth.value - 64) / 12).toInt().coerceIn(2, 24)
+        val ultimoInicio = (amostras.size - quantidade).coerceAtLeast(0)
+        val inicioRecente = maxOf(ultimoInicio, amostras.size - serie.trechos.last().size)
+        val ancorado = ancora?.let { tempo -> amostras.binarySearchBy(tempo) { it.tempo } } ?: -1
+        val seguindo = acompanhar && ancorado < 0
+        val inicio = when {
+            seguindo -> inicioRecente
+            ancorado >= 0 -> ancorado.coerceAtMost(ultimoInicio)
+            else -> 0
+        }
+        val janela = amostras.subList(inicio, (inicio + quantidade).coerceAtMost(amostras.size))
+        val trechos = remember(serie, janela) {
+            val periodo = janela.first().tempo..janela.last().tempo
+            serie.trechos.mapNotNull { trecho ->
+                trecho.filter { it.tempo in periodo }.takeIf { it.isNotEmpty() }
+            }
+        }
+        val larguraPx = with(LocalDensity.current) { maxWidth.toPx() }
+        val drag = rememberDraggableState { delta ->
+            deslocamento -= delta * quantidade / larguraPx.coerceAtLeast(1f)
+            val passos = deslocamento.toInt()
+            if (passos != 0) {
+                val destino = (inicio + passos).coerceAtLeast(0)
+                val proximo = destino.coerceAtMost(ultimoInicio)
+                if (acompanhar && destino >= ultimoInicio && passos > 0) {
+                    ancora = null
+                } else if (proximo != inicio) {
+                    ancora = amostras[proximo].tempo
+                }
+                deslocamento -= passos
+            }
+        }
+        Column {
+            PlotMedicoes(trechos, janela, grandeza, unidade, corCurva, zona, drag)
+            if (acompanhar && !seguindo) {
+                TextButton(onClick = { ancora = null }) { Text("Voltar às últimas leituras") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlotMedicoes(
+    trechos: List<List<AmostraMedicao>>,
+    amostras: List<AmostraMedicao>,
+    grandeza: String,
+    unidade: String,
+    corCurva: Color,
+    zona: ZoneId,
+    drag: DraggableState
+) {
     val inicio = amostras.first().tempo
     val fim = amostras.last().tempo
-    val escala = remember(serie) { escalaMedicoes(amostras) }
+    val escala = remember(amostras) { escalaMedicoes(amostras) }
     val segundos = Duration.between(inicio, fim).let { it.seconds + it.nano / 1e9 }
-    val formatador = remember(zona) {
-        formatoEixoMedicoes.withZone(zona)
+    val formatador = remember(zona, segundos < 3600) {
+        val formato = if (segundos < 3600) DateTimeFormatter.ofPattern("HH:mm:ss") else formatoEixoMedicoes
+        formato.withZone(zona)
     }
     val medir = rememberTextMeasurer()
+    val corEixos = CorEixos
+    val corGrade = CorGrade
+    val corDestaque = SurfaceDark
+    val estiloEixos = TextStyle(color = corEixos, fontSize = 10.sp)
     val density = LocalDensity.current
-    val rotulosY = remember(escala, unidade, medir) {
+    val rotulosY = remember(escala, unidade, medir, estiloEixos) {
         escala.marcas.map { valor ->
             medir.measure(numeroMedicao(valor, escala.casas) + if (unidade.isBlank()) "" else " $unidade", estiloEixos)
         }
     }
     val larguraY = with(density) { rotulosY.maxOf { it.size.width }.toDp() } + 10.dp
-    val curvas = remember(serie) {
-        serie.trechos.map { trecho ->
+    val curvas = remember(trechos) {
+        trechos.map { trecho ->
             val origem = trecho.first().tempo
             val tempos = trecho.map { Duration.between(origem, it.tempo).let { d -> d.seconds + d.nano / 1e9 } }
             val controles = controlesMonotonicos(tempos, trecho.map { it.valor })
@@ -154,9 +228,7 @@ private fun PlotMedicoes(serie: SerieMedicoes, grandeza: String, unidade: String
         }
     }
     val altura = 208.dp
-    val rolagem = rememberScrollState()
     var selecionada by remember { mutableStateOf<Instant?>(null) }
-    val escopo = rememberCoroutineScope()
     val destaque = remember(amostras, selecionada) { amostras.firstOrNull { it.tempo == selecionada } }
 
     Row(Modifier.fillMaxWidth()) {
@@ -166,27 +238,24 @@ private fun PlotMedicoes(serie: SerieMedicoes, grandeza: String, unidade: String
             val topo = 10.dp.toPx()
             val base = size.height - 26.dp.toPx()
             val eixo = size.width - 0.5.dp.toPx()
-            drawLine(CorEixos, Offset(eixo, topo), Offset(eixo, base + 0.5.dp.toPx()), 1.dp.toPx())
+            drawLine(corEixos, Offset(eixo, topo), Offset(eixo, base + 0.5.dp.toPx()), 1.dp.toPx())
             rotulosY.forEachIndexed { i, rotulo ->
                 val y = base - (base - topo) * i / rotulosY.lastIndex
-                drawLine(CorEixos, Offset(eixo - 4.dp.toPx(), y), Offset(eixo, y), 1.dp.toPx())
+                drawLine(corEixos, Offset(eixo - 4.dp.toPx(), y), Offset(eixo, y), 1.dp.toPx())
                 drawText(rotulo, topLeft = Offset(eixo - 8.dp.toPx() - rotulo.size.width, y - rotulo.size.height / 2f))
             }
         }
 
         BoxWithConstraints(Modifier.weight(1f).height(altura)) {
             val larguraVisivel = maxWidth
-            val largura = maxOf(larguraVisivel, (amostras.size * 9).coerceAtMost(1600).dp,
-                (segundos / 86_400 * 110).coerceAtMost(1600.0).dp)
-            val larguraPx = with(density) { largura.toPx() }
-            val visivelPx = with(density) { larguraVisivel.toPx() }
+            val larguraPx = with(density) { larguraVisivel.toPx() }
             val recuo = with(density) { 5.dp.toPx() }
             fun x(tempo: Instant): Float {
                 if (segundos == 0.0) return larguraPx / 2
                 val delta = Duration.between(inicio, tempo).let { it.seconds + it.nano / 1e9 }
                 return recuo + (delta / segundos).toFloat() * (larguraPx - 2 * recuo).coerceAtLeast(1f)
             }
-            val marcasX = remember(inicio, fim, largura, medir, formatador) {
+            val marcasX = remember(inicio, fim, larguraVisivel, medir, formatador, estiloEixos) {
                 val exemplo = medir.measure(formatador.format(inicio), estiloEixos).size.width
                 val espacamento = exemplo + with(density) { 14.dp.toPx() }
                 val quantidade = (larguraPx / espacamento).toInt().coerceAtLeast(1)
@@ -209,13 +278,13 @@ private fun PlotMedicoes(serie: SerieMedicoes, grandeza: String, unidade: String
                 }
             }
 
-            Box(Modifier.fillMaxSize().horizontalScroll(rolagem).testTag("medicoes-rolagem")) {
+            Box(Modifier.fillMaxSize().draggable(drag, Orientation.Horizontal).testTag("medicoes-rolagem")) {
                 Canvas(
-                    Modifier.width(largura).height(altura).testTag("medicoes-grafico")
+                    Modifier.fillMaxWidth().height(altura).testTag("medicoes-grafico")
                         .semantics {
                             contentDescription = "Série temporal de medições. Toque no gráfico para consultar a leitura mais próxima."
                         }
-                        .pointerInput(amostras, largura) {
+                        .pointerInput(amostras, larguraVisivel) {
                             detectTapGestures { toque ->
                                 val fracao = ((toque.x - recuo) / (larguraPx - 2 * recuo).coerceAtLeast(1f)).coerceIn(0f, 1f)
                                 val alvo = inicio.plusNanos((fracao * segundos * 1e9).toLong())
@@ -224,13 +293,6 @@ private fun PlotMedicoes(serie: SerieMedicoes, grandeza: String, unidade: String
                                     .minByOrNull { abs(x(it.tempo) - toque.x) }
                                     ?.takeIf { toque.y <= size.height - 26.dp.toPx() }
                                 selecionada = proxima?.tempo?.takeUnless { it == selecionada }
-                                selecionada?.let { tempo ->
-                                    val pos = x(tempo)
-                                    if (pos - rolagem.value !in 0f..visivelPx) {
-                                        val destino = (pos - visivelPx / 2).toInt().coerceIn(0, rolagem.maxValue)
-                                        escopo.launch { rolagem.animateScrollTo(destino) }
-                                    }
-                                }
                             }
                         }
                 ) {
@@ -241,12 +303,12 @@ private fun PlotMedicoes(serie: SerieMedicoes, grandeza: String, unidade: String
                     val tracejado = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 4.dp.toPx()))
                     escala.marcas.forEach { valor ->
                         val linha = y(valor)
-                        drawLine(CorGrade, Offset(0f, linha), Offset(size.width, linha), 1.dp.toPx(), pathEffect = tracejado)
+                        drawLine(corGrade, Offset(0f, linha), Offset(size.width, linha), 1.dp.toPx(), pathEffect = tracejado)
                     }
-                    drawLine(CorEixos, Offset(0f, base), Offset(size.width, base), 1.dp.toPx())
+                    drawLine(corEixos, Offset(0f, base), Offset(size.width, base), 1.dp.toPx())
                     marcasX.forEach { (tempo, pos, texto) ->
                         val marca = x(tempo)
-                        drawLine(CorEixos, Offset(marca, base), Offset(marca, base + 4.dp.toPx()), 1.dp.toPx())
+                        drawLine(corEixos, Offset(marca, base), Offset(marca, base + 4.dp.toPx()), 1.dp.toPx())
                         drawText(texto, topLeft = Offset(pos, base + 7.dp.toPx()))
                     }
                     curvas.forEach { trecho ->
@@ -272,22 +334,19 @@ private fun PlotMedicoes(serie: SerieMedicoes, grandeza: String, unidade: String
                     }
                     destaque?.let {
                         val pos = x(it.tempo)
-                        drawLine(CorEixos, Offset(pos, topo), Offset(pos, base), 1.dp.toPx())
+                        drawLine(corEixos, Offset(pos, topo), Offset(pos, base), 1.dp.toPx())
                         val centro = Offset(pos, y(it.valor))
-                        drawCircle(SurfaceDark, 5.dp.toPx(), centro)
+                        drawCircle(corDestaque, 5.dp.toPx(), centro)
                         drawCircle(corCurva, 4.dp.toPx(), centro, style = Stroke(2.dp.toPx()))
                     }
                 }
             }
 
             destaque?.let { amostra ->
-                val visivelX = x(amostra.tempo) - rolagem.value
-                if (visivelX in 0f..visivelPx) {
-                    val tooltipWidth = minOf(156.dp, larguraVisivel)
-                    val pos = with(density) { visivelX.toDp() }
-                    val esquerda = (pos - tooltipWidth / 2).coerceIn(0.dp, larguraVisivel - tooltipWidth)
-                    TooltipMedicao(amostra, grandeza, unidade, zona, Modifier.offset(x = esquerda).width(tooltipWidth))
-                }
+                val tooltipWidth = minOf(156.dp, larguraVisivel)
+                val pos = with(density) { x(amostra.tempo).toDp() }
+                val esquerda = (pos - tooltipWidth / 2).coerceIn(0.dp, larguraVisivel - tooltipWidth)
+                TooltipMedicao(amostra, grandeza, unidade, zona, Modifier.offset(x = esquerda).width(tooltipWidth))
             }
         }
     }

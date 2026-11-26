@@ -29,6 +29,7 @@ import com.example.watt_vision_mobile.ui.theme.ToneBlueBg
 import com.example.watt_vision_mobile.ui.theme.ToneBlueText
 import com.example.watt_vision_mobile.ui.theme.TextSecondary
 import com.example.watt_vision_mobile.ui.theme.TextWhite
+import com.example.watt_vision_mobile.ui.theme.TextOnAccent
 
 private enum class TipoFiltro(val titulo: String) {
     PERIODO("Período"), LOCAL("Local"), SETOR("Setor"), EQUIPAMENTO("Equipamento"), GRANDEZA("Grandeza")
@@ -74,14 +75,14 @@ internal fun BotaoFiltrosRelatorio(ativos: Int, onClick: () -> Unit) {
         contentPadding = PaddingValues(horizontal = 12.dp),
         modifier = Modifier.height(36.dp).semantics { stateDescription = "$ativos filtros ativos" }
     ) {
-        Icon(Icons.Filled.FilterList, contentDescription = null, tint = TextWhite, modifier = Modifier.size(16.dp))
+        Icon(Icons.Filled.FilterList, contentDescription = null, tint = TextOnAccent, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
-        Text("Filtros", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+        Text("Filtros", fontSize = 12.sp, color = TextOnAccent, fontWeight = FontWeight.Bold)
         if (ativos > 0) {
             Spacer(Modifier.width(6.dp))
             Surface(shape = RoundedCornerShape(10.dp), color = PrimaryBlue, modifier = Modifier.size(18.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(ativos.toString(), fontSize = 10.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                    Text(ativos.toString(), fontSize = 10.sp, color = TextOnAccent, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -119,7 +120,7 @@ internal fun FiltrosRelatorioSheet(
             TarifaFiltro(estado, filtros.periodo)
             Button(
                 onClick = { onAplicar(filtros) },
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue, contentColor = TextWhite),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue, contentColor = TextOnAccent),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text("Aplicar Filtros") }

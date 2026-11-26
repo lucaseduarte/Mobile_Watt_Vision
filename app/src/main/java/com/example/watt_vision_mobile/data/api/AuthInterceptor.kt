@@ -55,6 +55,11 @@ internal class AuthInterceptor(
                     url.querySize == 2 && url.queryParameterNames == setOf("id_pzem", "horas") &&
                     (url.queryParameter("id_pzem")?.toIntOrNull() ?: 0) > 0 &&
                     url.queryParameter("horas")?.toIntOrNull() in 1..720
+                "getConsumo" -> url.encodedPath == "/api/medicoes/consumo" &&
+                    url.querySize == 3 && url.queryParameterNames == setOf("id_pzem", "inicio", "fim") &&
+                    (url.queryParameter("id_pzem")?.toIntOrNull() ?: 0) > 0 &&
+                    url.queryParameter("inicio") == url.queryParameter("fim") &&
+                    runCatching { java.time.LocalDate.parse(url.queryParameter("inicio")) }.isSuccess
                 "getEquipamento" -> url.querySize == 0 && equipamento.matches(url.encodedPath)
                 "getDispositivos" -> url.querySize == 0 && url.encodedPath == "/api/dispositivos-iot"
                 else -> false

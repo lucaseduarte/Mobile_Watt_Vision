@@ -307,7 +307,7 @@ fun InfoCampo(
     valor: String?,
     modifier: Modifier = Modifier,
     copiavel: Boolean = false,
-    corValor: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color(0xFFF1F5F9)
+    corValor: androidx.compose.ui.graphics.Color = corTema(0xFFF1F5F9, 0xFF111827)
 ) {
     val context = LocalContext.current
     val texto = valor?.takeIf { it.isNotBlank() }
@@ -330,7 +330,7 @@ fun InfoCampo(
             ),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(rotulo, fontSize = 11.sp, color = androidx.compose.ui.graphics.Color(0xFF8E96A4))
+            Text(rotulo, fontSize = 11.sp, color = corTema(0xFF8E96A4, 0xFF475569))
             Text(texto ?: "—", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = corValor)
         }
         if (copiar != null) {

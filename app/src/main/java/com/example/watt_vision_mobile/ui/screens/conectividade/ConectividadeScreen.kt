@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Dns
@@ -39,6 +38,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.watt_vision_mobile.ui.components.WattVisionHeaderShortcut
+import com.example.watt_vision_mobile.data.api.integracaoLocal
+import com.example.watt_vision_mobile.ui.components.AtualizacaoPeriodica
 import com.example.watt_vision_mobile.ui.components.WattVisionScreenHeader
 import com.example.watt_vision_mobile.ui.screens.dashboard.components.CardComSombreamentoDashboard
 import com.example.watt_vision_mobile.ui.screens.operacional.TabFilterState
@@ -104,6 +105,10 @@ internal fun ConectividadeScreen(
     var periodo by rememberSaveable { mutableStateOf(Periodo.HOJE) }
     val hoje = LocalDate.now()
     val estado by viewModel.estado.collectAsState()
+    LaunchedEffect(integracaoLocal, viewModel) {
+        if (integracaoLocal) viewModel.atualizarAutomaticamente()
+    }
+    AtualizacaoPeriodica(integracaoLocal, viewModel::atualizarAutomaticamente)
     val dispositivos = estado.dispositivos
     val porId = remember(dispositivos) { dispositivos.associateBy { it.id } }
     val eventos = remember(estado.eventos, porId) {
@@ -134,12 +139,6 @@ internal fun ConectividadeScreen(
                     WattVisionHeaderShortcut(Icons.Filled.Notifications, "Alarmes recentes") { onNavigate("Alarmes") }
                     Spacer(Modifier.width(8.dp))
                     WattVisionHeaderShortcut(Icons.Filled.Settings, "Configurações do sistema") { onNavigate("Configurações") }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Status registrado no Backend", style = MaterialTheme.typography.labelMedium, color = ToneBlueText)
-                    IconButton(onClick = viewModel::atualizar, enabled = !estado.carregando) {
-                        Icon(Icons.Default.Refresh, "Atualizar conectividade", tint = ToneBlueText)
-                    }
                 }
                 if (estado.carregando) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (estado.erro) {
@@ -240,7 +239,7 @@ internal fun ConectividadeScreen(
                                     colors = FilterChipDefaults.filterChipColors(
                                         labelColor = TextSubtle,
                                         selectedContainerColor = Color(0xFF2C57A8),
-                                        selectedLabelColor = TextWhite
+                                        selectedLabelColor = Color.White
                                     )
                                 )
                             }
@@ -313,7 +312,7 @@ private fun AbasConectividade(aba: Aba, selecionar: (Aba) -> Unit) {
 private fun IndicadorCard(indicador: Indicador, modifier: Modifier = Modifier) {
     CardComSombreamentoDashboard(modifier = modifier.fillMaxWidth(), fundo = CardBackground, borda = CardBorder) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            IconeComFundo(indicador.icone, indicador.inicio, indicador.fim, Color(0xFFD0D8E2))
+            IconeComFundo(indicador.icone, indicador.inicio, indicador.fim, corTema(0xFFD0D8E2, 0xFFFFFFFF))
             Text(indicador.valor.toString(), style = MaterialTheme.typography.headlineSmall,
                 color = TextWhite, fontWeight = FontWeight.Bold)
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -409,7 +408,7 @@ private fun DispositivoCabecalho(dispositivo: DispositivoConectividade) {
 @Composable
 private fun AtributoDispositivo(rotulo: String, valor: String, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(rotulo, fontSize = 12.sp, letterSpacing = 0.2.sp, color = Color(0xFF8E96A4))
+        Text(rotulo, fontSize = 12.sp, letterSpacing = 0.2.sp, color = corTema(0xFF8E96A4, 0xFF475569))
         Text(valor, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextWhite)
     }
 }
@@ -439,7 +438,7 @@ private fun HistoricoTabela(eventos: List<Evento>, hoje: LocalDate) {
                                 fontSize = 15.sp,
                                 lineHeight = 18.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF4A525B)
+                                color = corTema(0xFF4A525B, 0xFF475569)
                             )
                         }
                     }
@@ -511,7 +510,7 @@ private fun LinhaHistorico(evento: Evento, hoje: LocalDate, larguras: List<Dp>) 
         }
         Column(celulaHistorico(larguras[2]), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             TextoHistorico(if (evento.data == hoje) "Hoje" else evento.data.toString())
-            Text(evento.horario, fontSize = 12.sp, color = Color(0xFF8E96A4))
+            Text(evento.horario, fontSize = 12.sp, color = corTema(0xFF8E96A4, 0xFF475569))
         }
         TextoHistorico(evento.duracao, celulaHistorico(larguras[3]))
     }
@@ -604,6 +603,7 @@ private fun Selo(texto: String, cor: Color, fundo: Color) {
     }
 }
 
+@Composable
 internal fun coresConexao(status: String): Pair<Color, Color> = when (status) {
     "Online" -> ToneGreenText to ToneGreenBg
     "Offline" -> ToneRedText to ToneRedBg

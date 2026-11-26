@@ -31,6 +31,7 @@ internal data class ConsultaMedicoes(
     val registros: List<RegistroMedicao> = emptyList(),
     val carregandoRegistros: Boolean = carregando,
     val avisoRegistros: String? = aviso,
+    val atualizadoEm: java.time.LocalTime? = null,
     val zona: java.time.ZoneId = java.time.ZoneId.systemDefault()
 )
 
@@ -107,6 +108,7 @@ internal fun consultarMedicoes(
                             catalogo = fonte.catalogo,
                             serie = montarSerie(linhas, filtros.metric, janela, agora.zone, pontos),
                             registros = montarRegistros(linhas, janela, agora.zone, pontos),
+                            atualizadoEm = java.time.LocalTime.now(agora.zone),
                             aviso = AVISO_LIMITE_SERIE_TEMPORAL.takeIf { linhas.size >= LIMITE_REGISTROS_SERIE_TEMPORAL }
                         )
                     } catch (cancelled: CancellationException) {

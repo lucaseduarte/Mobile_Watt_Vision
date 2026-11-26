@@ -21,7 +21,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -76,7 +75,8 @@ fun LoginScreen(
                 Image(
                     painter = painterResource(id = R.drawable.logo),
                     contentDescription = null,
-                    modifier = Modifier.size(215.dp),
+                    modifier = Modifier.size(215.dp)
+                        .background(corTema(0x00000000, 0xFF0D151F), RoundedCornerShape(20.dp)),
                     contentScale = ContentScale.Crop
                 )
 
@@ -133,7 +133,7 @@ fun LoginScreen(
                         focusedContainerColor = InputBackground,
                         unfocusedContainerColor = InputBackground,
                         focusedBorderColor = PrimaryBlue,
-                        unfocusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = corTema(0x00000000, 0xFFCBD8E7),
                         focusedTextColor = TextWhite,
                         unfocusedTextColor = TextWhite
                     ),
@@ -166,7 +166,7 @@ fun LoginScreen(
                         focusedContainerColor = InputBackground,
                         unfocusedContainerColor = InputBackground,
                         focusedBorderColor = PrimaryBlue,
-                        unfocusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = corTema(0x00000000, 0xFFCBD8E7),
                         focusedTextColor = TextWhite,
                         unfocusedTextColor = TextWhite
                     ),
@@ -217,7 +217,7 @@ fun LoginScreen(
                 ) {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(
-                            color = TextWhite,
+                            color = TextOnAccent,
                             modifier = Modifier.size(22.dp)
                         )
                     } else {

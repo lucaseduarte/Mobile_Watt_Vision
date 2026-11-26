@@ -4,46 +4,45 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Print
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.example.watt_vision_mobile.ui.theme.corTema
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.watt_vision_mobile.ui.components.AtualizacaoPeriodica
+import com.example.watt_vision_mobile.ui.components.ControleAtualizacao
 import com.example.watt_vision_mobile.ui.components.WattVisionScreenHeader
+import com.example.watt_vision_mobile.ui.screens.medicoes.ZONA_SERIE_REAL
 import com.example.watt_vision_mobile.ui.theme.CardBorder
 import com.example.watt_vision_mobile.ui.theme.DarkBackground
 import com.example.watt_vision_mobile.ui.theme.TextSubtle
 import com.example.watt_vision_mobile.ui.theme.ToneBlueBg
 import com.example.watt_vision_mobile.ui.theme.ToneBlueText
-import com.example.watt_vision_mobile.ui.theme.ToneGreenText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.format.DateTimeFormatter
 
-internal val CardRelatorioCor = Color(0xFF111827)
-private val horaRelatorio = DateTimeFormatter.ofPattern("HH:mm", ptRelatorio)
+internal val CardRelatorioCor
+    @Composable get() = corTema(0xFF111827, 0xFFFFFFFF)
 internal val dataRelatorio = DateTimeFormatter.ofPattern("EEE, dd/MM/yyyy", ptRelatorio)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -81,6 +80,7 @@ internal fun RelatoriosScreen(viewModel: RelatoriosViewModel, modifier: Modifier
             }
         }
     }
+    AtualizacaoPeriodica(!gerandoPdf && pdfPendente == null, viewModel::atualizarAutomaticamente)
     val relatorio = estado.relatorio
     val documento = relatorio?.takeIf { it.podeExportar }?.let { RelatorioDocumento(it, estado) }
     val nomePdf = "relatorio-${estado.filtros.periodo.titulo.lowercase(ptRelatorio).replace(' ', '-')}.pdf"
@@ -94,9 +94,6 @@ internal fun RelatoriosScreen(viewModel: RelatoriosViewModel, modifier: Modifier
                 title = "Relatórios",
                 subtitle = "Visão geral do sistema",
                 actions = {
-                    IconButton(onClick = viewModel::atualizar, enabled = !estado.carregando) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Atualizar dados")
-                    }
                     IconButton(enabled = documento != null && !gerandoPdf, onClick = {
                         pdfPendente = documento
                         exportar.launch(nomePdf)
@@ -139,21 +136,9 @@ internal fun RelatoriosScreen(viewModel: RelatoriosViewModel, modifier: Modifier
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     itemVerticalAlignment = Alignment.CenterVertically
                 ) {
-                    val hora = estado.atualizadoEm?.let { instante -> relatorio?.zona?.let { horaRelatorio.format(instante.atZone(it)) } }
+                    val hora = estado.atualizadoEm?.atZone(relatorio?.zona ?: ZONA_SERIE_REAL)?.toLocalTime()
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            if (hora != null) {
-                                Box(Modifier.size(6.dp).background(ToneGreenText, CircleShape))
-                            }
-                            Text(
-                                hora?.let { "Dados atualizados às $it" } ?: "Sem atualização de dados",
-                                color = TextSubtle,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
+                        ControleAtualizacao(hora, viewModel::atualizar, habilitado = !estado.carregando)
                         Surface(shape = RoundedCornerShape(20.dp), color = ToneBlueBg) {
                             Text(
                                 "Tarifa indisponível para o relatório",
@@ -164,6 +149,11 @@ internal fun RelatoriosScreen(viewModel: RelatoriosViewModel, modifier: Modifier
                         }
                     }
                     BotaoFiltrosRelatorio(estado.filtros.ativos) { filtrosAbertos = true }
+                }
+                if (relatorio != null) {
+                    estado.erro?.let {
+                        Text("Falha na atualização. Exibindo a última consulta.", color = TextSubtle)
+                    }
                 }
             }
             if (relatorio != null) item("cobertura") {
@@ -192,13 +182,13 @@ internal fun RelatoriosScreen(viewModel: RelatoriosViewModel, modifier: Modifier
                 }
             }
             when {
-                estado.carregando -> item("carregando") {
+                relatorio == null && estado.carregando -> item("carregando") {
                     CardRelatorio {
                         LinearProgressIndicator(Modifier.fillMaxWidth())
                         Text("Montando relatório…")
                     }
                 }
-                estado.erro != null -> item("erro") {
+                relatorio == null && estado.erro != null -> item("erro") {
                     CardRelatorio {
                         Text(estado.erro.orEmpty())
                         TextButton(onClick = viewModel::atualizar) { Text("Tentar novamente") }
@@ -214,16 +204,16 @@ internal fun RelatoriosScreen(viewModel: RelatoriosViewModel, modifier: Modifier
                     item("titulo-graficos") {
                         Column {
                             Text("Grandezas ao longo do tempo", style = MaterialTheme.typography.titleMedium)
-                            val pontos = estado.filtros.grandeza?.let { relatorio.series.getValue(it).pontos.size }
-                                ?: relatorio.pontosExibidos
-                            Text("$pontos pontos exibidos", color = TextSubtle)
                             if (GrandezaRelatorio.ENERGIA in grandezas) {
                                 Text("A curva de energia mostra o contador acumulado em kWh.", color = TextSubtle)
                             }
                         }
                     }
                     items(grandezas, key = { it.name }) { grandeza ->
-                        GraficoRelatorio(grandeza, relatorio.series.getValue(grandeza), relatorio.zona)
+                        GraficoRelatorio(
+                            grandeza, relatorio.series.getValue(grandeza), relatorio.zona,
+                            acompanhar = estado.filtros.periodo != PeriodoRelatorio.ONTEM
+                        )
                     }
                 }
                 else -> {
@@ -281,7 +271,7 @@ private fun ResumoRelatorio(estado: RelatoriosUiState) {
                             color = ToneBlueBg.copy(alpha = 0.65f)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(icone, contentDescription = null, tint = Color(0xFF60A5FA),
+                                Icon(icone, contentDescription = null, tint = corTema(0xFF60A5FA, 0xFF1D4ED8),
                                     modifier = Modifier.size(18.dp))
                             }
                         }

@@ -16,7 +16,20 @@ data class DispositivoConsultaDto(
     val nome: String,
     val status: String?,
     val data_comunicacao: String?,
-    val modelo: String?
+    val modelo: String?,
+    val mqtt: Int? = null,
+    val numero_serie: String? = null,
+    val versao_firmware: String? = null,
+    val tx_interval_sec: Int? = null,
+    val mac_address: String? = null,
+    val data_instalacao: String? = null,
+    val ssid: String? = null,
+    val ip: String? = null,
+    val broker: String? = null,
+    val port: Int? = null,
+    val topic: String? = null,
+    val client_id: String? = null,
+    val wifi: Int? = null
 )
 
 interface WattVisionApiService {

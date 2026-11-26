@@ -39,7 +39,7 @@ class ChartInteractionTest {
         }
         val plot = compose.onNodeWithTag("chart-plot").performScrollTo()
         val before = plot.fetchSemanticsNode().config[SemanticsProperties.StateDescription]
-        plot.performTouchInput { swipeLeft() }
+        plot.performTouchInput { swipeRight() }
         compose.waitForIdle()
         val after = plot.fetchSemanticsNode().config[SemanticsProperties.StateDescription]
         assertNotEquals(before, after)
@@ -65,6 +65,9 @@ class ChartInteractionTest {
             .config[SemanticsProperties.Text].single().text
         compose.runOnIdle { points.value = series(21) }
         compose.onNodeWithText(selectedBefore).assertExists()
+        val janelaAtual = compose.onNodeWithTag("chart-plot").fetchSemanticsNode()
+            .config[SemanticsProperties.StateDescription]
+        assertTrue(janelaAtual.endsWith(" a 21 de 21"))
     }
 
     @Test fun narrowLayoutKeepsPeriodsMetricsAndEmptyPlotWithoutSession() {

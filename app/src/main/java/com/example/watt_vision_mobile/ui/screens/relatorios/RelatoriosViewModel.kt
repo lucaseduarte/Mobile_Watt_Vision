@@ -54,8 +54,12 @@ internal class RelatoriosViewModel(
         if (carregarBackend != null || estado.value.demonstracao) consultar(recarregar = false)
     }
 
+    fun atualizarAutomaticamente() {
+        if (carregarBackend != null && consulta?.isActive != true) consultar(recarregar = true, preservar = true)
+    }
+
     fun atualizar() {
-        if (carregarBackend != null || estado.value.demonstracao) consultar(recarregar = true)
+        if (carregarBackend != null || estado.value.demonstracao) consultar(recarregar = true, preservar = true)
     }
 
     override fun onCleared() {
@@ -66,11 +70,11 @@ internal class RelatoriosViewModel(
         super.onCleared()
     }
 
-    private fun consultar(recarregar: Boolean) {
+    private fun consultar(recarregar: Boolean, preservar: Boolean = false) {
         val carregar = carregarBackend ?: fonteDemo ?: return
         consulta?.cancel()
         val atual = estado.value
-        estado.update { it.copy(carregando = true, erro = null, relatorio = null) }
+        estado.update { it.copy(carregando = true, erro = null, relatorio = it.relatorio.takeIf { preservar }) }
         consulta = viewModelScope.launch {
             try {
                 val agora = if (recarregar) relogio() else referencia ?: relogio()
@@ -89,7 +93,7 @@ internal class RelatoriosViewModel(
                 throw cancelada
             } catch (_: Exception) {
                 ensureActive()
-                estado.update { it.copy(carregando = false, erro = "Não foi possível montar o relatório.", atualizadoEm = null) }
+                estado.update { it.copy(carregando = false, erro = "Não foi possível montar o relatório.") }
             }
         }
     }

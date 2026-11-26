@@ -84,7 +84,7 @@ fun RecentAlarmsSection(
                         fontSize = 13.sp
                     )
                 } else {
-                    alarms.forEach { alarm -> AlarmItemRow(alarm = alarm) }
+                    alarms.take(3).forEach { alarm -> AlarmItemRow(alarm = alarm) }
                 }
             }
 

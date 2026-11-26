@@ -40,6 +40,8 @@ import com.example.watt_vision_mobile.data.repository.SessionState
 import com.example.watt_vision_mobile.model.UsuarioDto
 import com.example.watt_vision_mobile.model.alarmes.AlarmeEntidade
 import com.example.watt_vision_mobile.model.alarmes.AlarmeTipoEntidade
+import com.example.watt_vision_mobile.data.api.integracaoLocal
+import com.example.watt_vision_mobile.ui.components.AtualizacaoPeriodica
 import com.example.watt_vision_mobile.ui.components.WattVisionBottomBar
 import com.example.watt_vision_mobile.ui.screens.conectividade.ConectividadeScreen
 import com.example.watt_vision_mobile.ui.screens.conectividade.ConectividadeViewModel
@@ -74,9 +76,27 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ConfiguracaoApi.restaurar(applicationContext)
-        enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
+        val preferencias = getSharedPreferences("aparencia_watt_vision", MODE_PRIVATE)
+        val configuracoes = ViewModelProvider(this, object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val tema = if (preferencias.getBoolean("tema_claro", false)) "Claro" else "Escuro"
+                return requireNotNull(modelClass.cast(ConfiguracoesViewModel(tema) {
+                    preferencias.edit().putBoolean("tema_claro", it == "Claro").apply()
+                }))
+            }
+        })[ConfiguracoesViewModel::class.java]
         setContent {
-            WattVisionTheme {
+            val config by configuracoes.uiState.collectAsState()
+            val temaClaro = config.geral.tema == "Claro"
+            LaunchedEffect(temaClaro) {
+                val barras = if (temaClaro) SystemBarStyle.light(Color.TRANSPARENT, Color.BLACK)
+                    else SystemBarStyle.dark(Color.TRANSPARENT)
+                enableEdgeToEdge(statusBarStyle = barras, navigationBarStyle = barras)
+            }
+            WattVisionTheme(temaClaro, alterarTema = { claro ->
+                configuracoes.updateTema(if (claro) "Claro" else "Escuro")
+                configuracoes.salvarPreferenciasLocais()
+            }) {
                 var apiUrl by remember { mutableStateOf(ConfiguracaoApi.url) }
                 val usaConfiguracaoWifi = ConfiguracaoApi.permiteConfigurarWifi &&
                     Build.HARDWARE !in listOf("ranchu", "goldfish")
@@ -102,7 +122,8 @@ class MainActivity : ComponentActivity() {
                     is SessionState.Authenticated -> key(state.generation) {
                         ProtectedNavigation(
                             application, state.user, loginViewModel::logout,
-                            loginViewModel.protectedStore(state.generation)
+                            loginViewModel.protectedStore(state.generation),
+                            configuracoes
                         )
                     }
                     is SessionState.SignedOut -> LoginScreen(viewModel = loginViewModel, onConfigureBackend = alterarIp)
@@ -230,7 +251,8 @@ internal fun ProtectedNavigation(
     application: Application,
     user: UsuarioDto,
     onLogout: () -> Unit,
-    sessionStore: ViewModelStore? = null
+    sessionStore: ViewModelStore? = null,
+    configuracoes: ConfiguracoesViewModel? = null
 ) {
     val store = sessionStore ?: remember { ViewModelStore() }
     DisposableEffect(store) {
@@ -254,7 +276,7 @@ internal fun ProtectedNavigation(
     val dashboardViewModel by remember(provider) { lazy { provider[DashboardViewModel::class.java] } }
     val operacionalViewModel by remember(provider) { lazy { provider[OperacionalViewModel::class.java] } }
     val equipamentoDetalheViewModel by remember(provider) { lazy { provider[EquipamentoDetalheViewModel::class.java] } }
-    val configuracoesViewModel by remember(provider) { lazy { provider[ConfiguracoesViewModel::class.java] } }
+    val configuracoesViewModel by remember(provider) { lazy { configuracoes ?: provider[ConfiguracoesViewModel::class.java] } }
     val alarmesViewModel by remember(provider) { lazy { provider[AlarmesViewModel::class.java] } }
     val relatoriosViewModel by remember(provider) { lazy { provider[RelatoriosViewModel::class.java] } }
     val conectividadeViewModel by remember(provider) { lazy { provider[ConectividadeViewModel::class.java] } }
@@ -393,6 +415,10 @@ internal fun ProtectedNavigation(
                 )
             }
             ROTA_DETALHES_DISPOSITIVO -> {
+                LaunchedEffect(integracaoLocal, selectedDispositivoId) {
+                    if (integracaoLocal) conectividadeViewModel.atualizarAutomaticamente()
+                }
+                AtualizacaoPeriodica(integracaoLocal, conectividadeViewModel::atualizarAutomaticamente)
                 val estado by conectividadeViewModel.estado.collectAsState()
                 DispositivoDetalhesScreen(
                     dispositivo = estado.dispositivos.firstOrNull { it.id == selectedDispositivoId },

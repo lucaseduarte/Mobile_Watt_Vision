@@ -154,11 +154,11 @@ fun OperacionalFilterBar(
                         Icon(
                             imageVector = Icons.Default.FilterList,
                             contentDescription = null,
-                            tint = TextWhite,
+                            tint = Color.White,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "Filtros", fontSize = 12.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                        Text(text = "Filtros", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
 
                         if (filters.activeCount > 0) {
                             Spacer(modifier = Modifier.width(6.dp))
@@ -168,7 +168,7 @@ fun OperacionalFilterBar(
                                 modifier = Modifier.size(18.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Text(text = "${filters.activeCount}", fontSize = 10.sp, color = TextWhite, fontWeight = FontWeight.Bold)
+                                    Text(text = "${filters.activeCount}", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }

@@ -62,7 +62,7 @@ fun AlarmesIndicators(counts: AlarmesCounts?) {
 
 @Composable
 private fun AlarmesIndicator(label: String, value: Int?, detail: String, icon: ImageVector, tone: Color, modifier: Modifier) {
-    CardComSombreamentoDashboard(modifier = modifier, fundo = Color(0xFF111827), borda = Color(0xFF1E293B)) {
+    CardComSombreamentoDashboard(modifier = modifier, fundo = corTema(0xFF111827, 0xFFFFFFFF), borda = corTema(0xFF1E293B, 0xFFCBD8E7)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             AlarmeIcon(icon, tone)
             Text(value?.toString() ?: "—", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = TextWhite)

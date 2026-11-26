@@ -2,6 +2,8 @@ package com.example.watt_vision_mobile.ui.screens.configuracoes
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -104,7 +105,7 @@ fun ConfiguracoesScreen(
                     .weight(1f)
             ) {
                 when (uiState.activeTab) {
-                    0 -> AbaGeral(uiState = uiState, viewModel = viewModel)
+                    0 -> AbaGeral(uiState = uiState)
                     1 -> AbaUsuarios(carregarConta = carregarConta, onLogout = onLogout)
                 }
             }
@@ -117,10 +118,9 @@ fun ConfiguracoesScreen(
 // ==========================================
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AbaGeral(
-    uiState: ConfiguracoesUiState,
-    viewModel: ConfiguracoesViewModel
-) {
+fun AbaGeral(uiState: ConfiguracoesUiState) {
+    val temaClaro = LocalTemaClaro.current
+    val alterarTema = LocalAlterarTema.current
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -190,18 +190,18 @@ fun AbaGeral(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         val temas = listOf(
-                            Triple("Claro", Icons.Default.LightMode, "Modo Claro"),
-                            Triple("Escuro", Icons.Default.DarkMode, "Modo Escuro (Padrão)")
+                            Triple(true, Icons.Default.LightMode, "Modo Claro"),
+                            Triple(false, Icons.Default.DarkMode, "Modo Escuro")
                         )
                         temas.forEach { (temaKey, icon, label) ->
-                            val isSelected = uiState.geral.tema == temaKey
+                            val isSelected = temaClaro == temaKey
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = if (isSelected) PrimaryBlue.copy(alpha = 0.25f) else InputBackground,
                                 border = BorderStroke(1.5.dp, if (isSelected) PrimaryBlue else CardBorder),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clickable { viewModel.updateTema(temaKey) }
+                                    .selectable(selected = isSelected, role = Role.RadioButton) { alterarTema(temaKey) }
                             ) {
                                 Row(
                                     modifier = Modifier.padding(vertical = 12.dp, horizontal = 10.dp),
@@ -234,6 +234,7 @@ fun AbaGeral(
 // ==========================================
 // 2. ABA USUÁRIOS (Visual do Header, Badges Admin/Gestor e Controles de Seleção)
 // ==========================================
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AbaUsuarios(
     carregarConta: suspend () -> UsuarioDto?,
@@ -319,78 +320,71 @@ private fun AbaUsuarios(
                         else Modifier
                     )
             ) {
-                Row(
+                Column(
                     modifier = Modifier.padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
+                    Text(
+                        text = user.nome,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextWhite
+                    )
+                    Text(text = user.email, fontSize = 11.sp, color = TextMuted)
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = user.nome, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            // Badges com Cores Distintas conforme Frontend (Administrador = Roxo/Indigo, Gestor = Ciano)
-                            val isAdmin = user.perfil == "Administrador"
-                            val perfilBg = if (isAdmin) Color(0xFF1E1B4B) else ToneCyanBg
-                            val perfilText = if (isAdmin) Color(0xFF818CF8) else ToneCyanText
-                            val perfilBorder = if (isAdmin) Color(0xFF6366F1) else ToneCyanText
-                            val perfilIcon = if (isAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Badge
-
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = perfilBg,
-                                border = BorderStroke(1.dp, perfilBorder)
+                        val isAdmin = user.perfil == "Administrador"
+                        val perfilBg = if (isAdmin) corTema(0xFF1E1B4B, 0xFFE0E7FF) else ToneCyanBg
+                        val perfilText = if (isAdmin) corTema(0xFF818CF8, 0xFF3730A3) else ToneCyanText
+                        val perfilIcon = if (isAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Badge
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = perfilBg,
+                            border = BorderStroke(1.dp, perfilText.copy(alpha = 0.45f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                ) {
-                                    Icon(imageVector = perfilIcon, contentDescription = null, tint = perfilText, modifier = Modifier.size(12.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(user.perfil, color = perfilText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                }
+                                Icon(perfilIcon, contentDescription = null, tint = perfilText, modifier = Modifier.size(12.dp))
+                                Text(user.perfil, color = perfilText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
                         }
 
-                        Text(text = user.email, fontSize = 11.sp, color = TextMuted)
-                        if (contaAtual) Text("Minha conta", fontSize = 11.sp, color = ToneBlueText)
-                        Text(text = "Local: ${user.local}", fontSize = 11.sp, color = TextSubtle)
-
-                        // Destaque para o Último Acesso com Ícone de Relógio
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Schedule, contentDescription = null, tint = TextMuted, modifier = Modifier.size(13.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Último acesso: ${user.ultimoAcesso}",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = TextMuted
-                            )
-                        }
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        // Badge Status
                         val isAtivo = user.status == "Ativo"
+                        val statusText = if (isAtivo) ToneGreenText else ToneRedText
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = if (isAtivo) ToneGreenBg else ToneRedBg,
-                            border = BorderStroke(1.dp, if (isAtivo) ToneGreenText else ToneRedText)
+                            border = BorderStroke(1.dp, statusText.copy(alpha = 0.45f))
                         ) {
                             Text(
                                 text = user.status,
                                 fontSize = 10.sp,
-                                color = if (isAtivo) ToneGreenText else ToneRedText,
+                                color = statusText,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
+                    }
 
+                    if (contaAtual) Text("Minha conta", fontSize = 11.sp, color = ToneBlueText)
+                    Text(text = "Local: ${user.local}", fontSize = 11.sp, color = TextSubtle)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Schedule, contentDescription = null, tint = TextMuted, modifier = Modifier.size(13.dp))
+                        Text(
+                            text = "Último acesso: ${user.ultimoAcesso}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextMuted
+                        )
                     }
                 }
             }

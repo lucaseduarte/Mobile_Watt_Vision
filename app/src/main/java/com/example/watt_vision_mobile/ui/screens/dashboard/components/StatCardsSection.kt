@@ -61,32 +61,32 @@ fun StatCardsSection(
 fun StatCardItem(card: StatCardData) {
     val (iconBgBrush, _, badgeBg, badgeText) = when (card.tone) {
         StatTone.GREEN -> Quadruple(
-            Brush.linearGradient(listOf(Color(0xFF267447), Color(0xFF12372D))),
+            Brush.linearGradient(listOf(corTema(0xFF267447, 0xFF15803D), corTema(0xFF12372D, 0xFF15803D))),
             ToneGreenText,
             ToneGreenBg,
             ToneGreenText
         )
         StatTone.RED -> Quadruple(
-            Brush.linearGradient(listOf(Color(0xFF632632), Color(0xFF2A1822))),
+            Brush.linearGradient(listOf(corTema(0xFF632632, 0xFFDC2626), corTema(0xFF2A1822, 0xFFDC2626))),
             ToneRedText,
             ToneRedBg,
             ToneRedText
         )
         StatTone.YELLOW -> Quadruple(
-            Brush.linearGradient(listOf(Color(0xFFA99A76), Color(0xFF51462F))),
+            Brush.linearGradient(listOf(corTema(0xFFA99A76, 0xFFA84C09), corTema(0xFF51462F, 0xFFA84C09))),
             ToneYellowText,
             ToneYellowBg,
             ToneYellowText
         )
         StatTone.BLUE -> Quadruple(
-            Brush.linearGradient(listOf(Color(0xFF315FAE), Color(0xFF17315F))),
+            Brush.linearGradient(listOf(corTema(0xFF315FAE, 0xFF2563EB), corTema(0xFF17315F, 0xFF2563EB))),
             ToneBlueText,
             ToneBlueBg,
             ToneBlueText
         )
     }
 
-    val iconVector: ImageVector = when (card.iconName) {
+    val iconVector: ImageVector = iconeDashboard(card.iconName) ?: when (card.iconName) {
         "check_circle" -> Icons.Default.CheckCircle
         "wifi_off" -> Icons.Default.WifiOff
         "zap" -> Icons.Default.Bolt
@@ -120,7 +120,7 @@ fun StatCardItem(card: StatCardData) {
                     Icon(
                         imageVector = iconVector,
                         contentDescription = null,
-                        tint = TextWhite,
+                        tint = corTema(0xFFD0D8E2, 0xFFFFFFFF),
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -178,8 +178,8 @@ fun StatCardItem(card: StatCardData) {
 internal fun CardComSombreamentoDashboard(
     modifier: Modifier = Modifier,
     shape: RoundedCornerShape = RoundedCornerShape(16.dp),
-    fundo: Color = Color(0xFF0C141F),
-    borda: Color = Color(0xFF1B2A40),
+    fundo: Color = corTema(0xFF0C141F, 0xFFFFFFFF),
+    borda: Color = corTema(0xFF1B2A40, 0xFFCBD8E7),
     content: @Composable BoxScope.() -> Unit
 ) {
     Box(
@@ -201,8 +201,8 @@ internal fun CardComSombreamentoDashboard(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFF244982).copy(alpha = 0.13f),
-                            Color(0xFF0F1B2C).copy(alpha = 0.05f),
+                            corTema(0xFF244982, 0xFFDCEAFF).copy(alpha = 0.13f),
+                            corTema(0xFF0F1B2C, 0xFFFFFFFF).copy(alpha = 0.05f),
                             Color.Transparent
                         ),
                         startY = 0f,
@@ -219,7 +219,7 @@ internal fun CardComSombreamentoDashboard(
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            Color(0xFF2856A0).copy(alpha = 0.14f),
+                            corTema(0xFF2856A0, 0xFFBFDBFE).copy(alpha = 0.14f),
                             Color.Transparent
                         )
                     )
@@ -236,7 +236,7 @@ internal fun CardComSombreamentoDashboard(
                     Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color(0xFF31558A).copy(alpha = 0.3f),
+                            corTema(0xFF31558A, 0xFFB9CEE9).copy(alpha = 0.3f),
                             Color.Transparent
                         )
                     )

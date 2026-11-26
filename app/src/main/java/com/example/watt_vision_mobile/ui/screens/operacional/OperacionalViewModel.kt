@@ -28,6 +28,7 @@ class OperacionalViewModel internal constructor(
         this(application, savedStateHandle, RetrofitOperacionalRepository(ApiClient.createService<ChartCatalogApiService>(application)))
 
     private var loadJob: Job? = null
+    private var catalogoCarregado = false
 
     private val _uiState = MutableStateFlow(OperacionalUiState())
     val uiState: StateFlow<OperacionalUiState> = _uiState.asStateFlow()
@@ -52,15 +53,27 @@ class OperacionalViewModel internal constructor(
     }
 
     fun loadData() {
+        carregarCatalogo(exibirCarregamento = true)
+    }
+
+    fun atualizarEmPrimeiroPlano() {
+        if (loadJob?.isActive != true) carregarCatalogo(exibirCarregamento = false)
+    }
+
+    private fun carregarCatalogo(exibirCarregamento: Boolean) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            if (exibirCarregamento) {
+                _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            }
             try {
                 val catalogo = repository.carregar()
                 ensureActive()
+                catalogoCarregado = true
                 _uiState.update {
                     it.copy(
                         isLoading = false,
+                        errorMessage = null,
                         equipamentos = catalogo.equipamentos,
                         setores = catalogo.setores,
                         locais = catalogo.locais
@@ -70,11 +83,10 @@ class OperacionalViewModel internal constructor(
                 throw e
             } catch (e: Exception) {
                 ensureActive()
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = "Erro ao carregar dados operacionais"
-                    )
+                if (exibirCarregamento || !catalogoCarregado) {
+                    _uiState.update {
+                        it.copy(isLoading = false, errorMessage = "Erro ao carregar dados operacionais")
+                    }
                 }
             }
         }

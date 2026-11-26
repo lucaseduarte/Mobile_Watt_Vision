@@ -9,7 +9,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,17 +16,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.watt_vision_mobile.ui.components.WattVisionHeaderShortcut
+import com.example.watt_vision_mobile.ui.components.ControleAtualizacao
 import com.example.watt_vision_mobile.ui.components.WattVisionScreenHeader
 import com.example.watt_vision_mobile.ui.components.filtros.*
 import com.example.watt_vision_mobile.ui.screens.dashboard.DashboardFilterState
@@ -46,7 +43,8 @@ import com.example.watt_vision_mobile.ui.theme.*
 @Composable
 fun DashboardHeaderAndFilters(
     filters: DashboardFilterState,
-    lastUpdatedText: String,
+    atualizadoEm: java.time.LocalDateTime?,
+    carregando: Boolean = false,
     onFilterChanged: (DashboardFilterState) -> Unit,
     onRefreshClick: () -> Unit,
     onRemoveFilter: (String) -> Unit,
@@ -77,61 +75,16 @@ fun DashboardHeaderAndFilters(
             Spacer(Modifier.width(8.dp))
             WattVisionHeaderShortcut(Icons.Filled.Settings, "Configurações do sistema", onConfiguracoesClick)
         }
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-            val medir = rememberTextMeasurer()
-            val estiloStatus = LocalTextStyle.current.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium)
-            val estiloFiltro = MaterialTheme.typography.labelLarge.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            val empilhar = with(LocalDensity.current) {
-                val larguraFiltro = medir.measure("Filtros", estiloFiltro, softWrap = false).size.width.toDp() +
-                    50.dp + if (filters.activeCount > 0) 26.dp else 0.dp
-                // Reserve the refresh icon, both paddings and the gap between controls.
-                val larguraStatus = (maxWidth - larguraFiltro - 54.dp).roundToPx().coerceAtLeast(1)
-                medir.measure(lastUpdatedText, estiloStatus, constraints = Constraints(maxWidth = larguraStatus))
-                    .lineCount > 2
-            }
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = InputBackground,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
-                    modifier = Modifier
-                        .then(if (empilhar) Modifier.fillMaxWidth() else Modifier.weight(1f))
-                        .align(Alignment.CenterVertically)
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { onRefreshClick() }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 48.dp)
-                            .padding(horizontal = 12.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Atualizar dados",
-                            tint = LinkBlue,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = lastUpdatedText,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextWhite
-                        )
-                    }
-                }
-
-                BotaoFiltros(filters.activeCount, Modifier.align(Alignment.CenterVertically)) {
-                    draftFilters = filters
-                    isFilterSheetOpen = true
-                }
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            itemVerticalAlignment = Alignment.CenterVertically
+        ) {
+            ControleAtualizacao(atualizadoEm?.toLocalTime(), onRefreshClick, habilitado = !carregando)
+            BotaoFiltros(filters.activeCount) {
+                draftFilters = filters
+                isFilterSheetOpen = true
             }
         }
 
@@ -401,7 +354,7 @@ fun PreviewDashboardHeaderWithoutFilters() {
     WattVisionTheme {
         DashboardHeaderAndFilters(
             filters = DashboardFilterState(),
-            lastUpdatedText = "Atualizado às 10:28",
+            atualizadoEm = java.time.LocalDateTime.of(2026, 1, 1, 10, 28),
             onFilterChanged = {},
             onRefreshClick = {},
             onRemoveFilter = {},
@@ -417,7 +370,7 @@ fun PreviewDashboardHeaderWithActiveFilters() {
     WattVisionTheme {
         DashboardHeaderAndFilters(
             filters = DashboardFilterState(location = "Planta Industrial Jandira", sector = "Produção"),
-            lastUpdatedText = "Atualizado às 10:28",
+            atualizadoEm = java.time.LocalDateTime.of(2026, 1, 1, 10, 28),
             onFilterChanged = {},
             onRefreshClick = {},
             onRemoveFilter = {},

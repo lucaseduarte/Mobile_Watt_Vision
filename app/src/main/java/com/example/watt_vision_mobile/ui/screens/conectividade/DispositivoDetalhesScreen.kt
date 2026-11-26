@@ -37,8 +37,10 @@ private enum class AbaDetalhes(val titulo: String) {
     HISTORICO("Histórico")
 }
 
-private val rotuloTecnico = Color(0xFF8E96A4)
-private val valorTecnico = Color(0xFFF1F5F9)
+private val rotuloTecnico
+    @Composable get() = corTema(0xFF8E96A4, 0xFF475569)
+private val valorTecnico
+    @Composable get() = corTema(0xFFF1F5F9, 0xFF111827)
 private val telemetria = listOf("Tensão", "Corrente", "Potência Ativa", "Energia Acumulada", "Frequência", "Fator de Potência")
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -195,7 +197,7 @@ private fun HardwareDetalhes(dispositivo: DispositivoConectividade, modifier: Mo
                 TituloSecao("Especificações do Dispositivo")
                 LinhaTecnica("Modelo" to dispositivo.tipo, "Nº Série" to (cadastro.numero_serie ?: "—"))
                 LinhaTecnica("Firmware" to (cadastro.versao_firmware ?: "—"), "Intervalo" to (cadastro.tx_interval_sec?.let { "$it s" } ?: "—"))
-                CampoTecnico("Ponto de Medição", "—")
+                CampoTecnico("Ponto de Medição", dispositivo.pontosMedicao.joinToString(", ").ifEmpty { "—" })
                 CampoCopiavel("MAC Address", cadastro.mac_address ?: "—")
                 CampoTecnico("Data de Instalação", cadastro.data_instalacao ?: "—")
             }
@@ -203,6 +205,11 @@ private fun HardwareDetalhes(dispositivo: DispositivoConectividade, modifier: Mo
         item {
             CardDetalhes {
                 TituloSecao("Conexão Wi-Fi")
+                CampoTecnico("Wi-Fi", when (cadastro.wifi) {
+                    1 -> "Ativo"
+                    0 -> "Inativo"
+                    else -> "—"
+                })
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CampoTecnico("Rede (SSID)", cadastro.ssid ?: "—", Modifier.weight(1f))
                     CampoCopiavel("Endereço IP", cadastro.ip ?: "—", Modifier.weight(1.35f))

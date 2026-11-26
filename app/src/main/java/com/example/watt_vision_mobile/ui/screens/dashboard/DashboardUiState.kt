@@ -58,6 +58,7 @@ data class DashboardUiState(
     val isLoading: Boolean = false,
     val simulated: Boolean = false,
     val summaryCards: List<StatCardData> = emptyList(),
+    val indicadores: List<IndicadorDashboard> = emptyList(),
     val selectedChartPeriod: String = "Hoje",
     val chartPoints: List<MedicaoPoint> = emptyList(),
     val chart: ChartState = ChartState(),
@@ -65,7 +66,7 @@ data class DashboardUiState(
     val alarms: List<AlarmData>? = null,
     val composicaoItems: List<ComposicaoItem> = emptyList(),
     val isComposicaoModalOpen: Boolean = false,
-    val lastUpdatedText: String = "Consultas de negócio suspensas",
+    val atualizadoEm: java.time.LocalDateTime? = null,
     val filters: DashboardFilterState = DashboardFilterState(),
     val errorMessage: String? = null
 )

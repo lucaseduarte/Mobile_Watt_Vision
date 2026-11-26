@@ -56,6 +56,22 @@ class RelatoriosCalculosTest {
     }
 
     @Test
+    fun escalaRecenteDestacaVariacaoAposLacunaSemAlterarHistorico() {
+        val r = relatorio(
+            leitura(4, 10.0).copy(valores = mapOf(potencia to 10.0)),
+            leitura(0, 0.0).copy(instante = agora.minusSeconds(20).toInstant(), valores = mapOf(potencia to 2.089)),
+            leitura(0, 0.0).copy(instante = agora.minusSeconds(10).toInstant(), valores = mapOf(potencia to 2.090)),
+            leitura(0, 0.0).copy(valores = mapOf(potencia to 2.091))
+        )
+        val serie = r.series.getValue(potencia)
+        assertEquals(4, serie.pontos.size)
+        assertEquals(listOf(2.089, 2.090, 2.091), serie.pontosRecentes.map { it.valor })
+        val escala = escalaAutomatica(serie.pontosRecentes, potencia)
+        assertEquals(2.0887, escala.minimo, 0.000001)
+        assertEquals(2.0913, escala.maximo, 0.000001)
+    }
+
+    @Test
     fun equipamentoRestringeLeiturasConsumoEGraficos() {
         val r = relatorio(
             leitura(4, 10.0).copy(equipamentoId = "motor"),

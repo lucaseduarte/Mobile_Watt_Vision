@@ -43,6 +43,10 @@ class AlarmesViewModel(application: Application) : AndroidViewModel(application)
 
     fun updateFilters(filters: AlarmesFilters) { _uiState.update { it.copy(filters = filters) } }
 
+    fun refreshAutomatically() {
+        if (request?.isActive != true) refresh()
+    }
+
     fun refresh() {
         request?.cancel()
         val credential = session.currentCredential()

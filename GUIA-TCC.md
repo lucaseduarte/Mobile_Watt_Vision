@@ -1,5 +1,47 @@
 # Guia de apresentação do Watt Vision
 
+## PC Windows do auditório
+
+Os três projetos ficam na mesma pasta no PC do auditório. Use Node.js 24, MySQL 8, Android Studio com JDK 25 para o Gradle, SDK Platform 37 e um emulador Android API 37. Faça a preparação inicial com internet para instalar as dependências e a imagem do emulador.
+
+### Primeira preparação
+
+Em uma pasta nova no PC do auditório:
+
+```powershell
+git clone --branch teste-prototipo https://github.com/lucaseduarte/Mobile_Watt_Vision.git
+git clone https://github.com/alvesthzin-art/Front_WV.git
+git clone https://github.com/DiegodelPadua/back-end_wattVision.git
+git -C Front_WV switch --detach 165903b
+git -C back-end_wattVision switch --detach 7d724ea
+npm.cmd --prefix .\Front_WV ci
+npm.cmd --prefix .\back-end_wattVision ci
+Set-Location .\Mobile_Watt_Vision
+```
+
+Inicie o MySQL local e prepare uma instância vazia para a apresentação. Siga **MySQL descartável e conta de demonstração** abaixo para importar `scripts/tcc-demonstracao.sql`, criar o operador fictício e configurar a conta MySQL do Backend. Use o commit do Backend acima. A configuração do lançador histórico na porta 13000 fica reservada ao ensaio antigo. O SQL de apresentação cria a base uma vez, tem quatro leituras sintéticas e inclui um alarme cadastrado. Se a base já existir, o SQL interrompe a criação.
+
+Guarde a senha que você criar para `operador.tcc@example.invalid`. A senha dessa conta é usada no Web e no Mobile. O lançador pede a conta de serviço **MySQL**, que é uma credencial separada. Para o roteiro de consulta, use as permissões do guia, incluindo `UPDATE (ultimo_acesso)`. Se fizer parte do roteiro gravar cadastros ou enviar medições, a conta MySQL precisa também das permissões de escrita correspondentes no schema descartável.
+
+### Iniciar a apresentação
+
+Na pasta do Mobile, com o MySQL iniciado e as portas 3000 e 5173 livres:
+
+```powershell
+git pull --ff-only origin teste-prototipo
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Iniciar-Auditorio.ps1
+```
+
+Se a instalação do MySQL usar outra porta, acrescente `-PortaMySql NUMERO`. Informe a conta MySQL e aguarde a mensagem com os endereços do Backend e do Web. O lançador verifica a base sintética e o operador antes de disponibilizar o Backend. Ele inicia o Web com a URL correta da API e mantém os serviços locais, sem carregar o assinante MQTT.
+
+1. Abra **http://127.0.0.1:5173/**, faça login e selecione o equipamento da carga de demonstração. Se as leituras tiverem sido preparadas em outro dia, escolha **Últimos 7 dias** em Medições e Relatórios.
+2. Abra o projeto Mobile no Android Studio, aguarde a sincronização e use **Run** na variante **Debug** no emulador. O padrão é `http://10.0.2.2:3000/`. Se houver configurações antigas de `wattVisionDebugApiUrl` ou `wattVisionDebugLocalSeries`, remova-as antes de compilar. No Android 17, permita acesso à rede local se solicitado.
+3. Use o mesmo operador e senha no emulador. Faça o ensaio com antecedência. Confira login nos dois clientes, as leituras no Web e no Mobile e o PDF no Mobile.
+
+Se o login falhar, confira primeiro a saída do lançador. `ER_ACCESS_DENIED_ERROR` indica falha na credencial MySQL. Se a API responder na raiz, mas o login falhar, confira o provisionamento do operador e a permissão de atualizar `ultimo_acesso`. Se apenas o emulador falhar, confira a URL Debug e a permissão de rede local.
+
+O alarme do SQL é um registro de demonstração. A ingestão desta revisão do Backend ainda não gera alarmes novos a partir dos limites cadastrados.
+
 ## Apresentação no emulador com o Backend padrão
 
 1. No notebook, mantenha o MySQL local `db_watt_vision` e o Backend Node.js padrão ativos. O Backend precisa responder na porta 3000 e a base precisa ter a conta e os dados da demonstração.

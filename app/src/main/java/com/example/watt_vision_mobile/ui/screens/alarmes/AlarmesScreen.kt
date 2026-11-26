@@ -9,7 +9,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,6 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.watt_vision_mobile.model.alarmes.*
+import com.example.watt_vision_mobile.data.api.integracaoLocal
+import com.example.watt_vision_mobile.ui.components.AtualizacaoPeriodica
+import com.example.watt_vision_mobile.ui.components.ControleAtualizacao
 import com.example.watt_vision_mobile.ui.components.WattVisionScreenHeader
 import com.example.watt_vision_mobile.ui.screens.alarmes.components.*
 import com.example.watt_vision_mobile.ui.theme.*
@@ -26,6 +28,7 @@ import com.example.watt_vision_mobile.ui.theme.*
 @Composable
 fun AlarmesScreen(viewModel: AlarmesViewModel, onEntidadeClick: (AlarmeEntidade) -> Unit, modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsState()
+    AtualizacaoPeriodica(integracaoLocal, viewModel::refreshAutomatically)
     AlarmesContent(state, viewModel::updateFilters, viewModel::refresh, modifier, viewModel::entidade, onEntidadeClick)
 }
 
@@ -57,11 +60,11 @@ fun AlarmesContent(
                 title = "Alarmes",
                 subtitle = "Consulta e acompanhamento",
                 contentPadding = PaddingValues(top = 12.dp)
-            ) {
-                IconButton(onClick = onRefresh, enabled = !state.isRefreshing, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.Default.Refresh, "Atualizar alarmes", tint = if (state.isRefreshing) TextMuted else ToneBlueText)
-                }
-            }
+            )
+            ControleAtualizacao(
+                state.updatedAt?.toLocalTime(), onRefresh,
+                habilitado = !state.isRefreshing, descricao = "Atualizar alarmes"
+            )
         }
         if (modeControl != null) item { modeControl() }
         item { AlarmesIndicators(counts) }
@@ -82,7 +85,7 @@ fun AlarmesContent(
                 Button(
                     onClick = { filtersOpen = true },
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue, contentColor = TextWhite),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue, contentColor = androidx.compose.ui.graphics.Color.White),
                     modifier = Modifier.heightIn(min = 48.dp)
                 ) {
                     Icon(Icons.Default.FilterList, null, Modifier.size(18.dp))
@@ -103,12 +106,6 @@ fun AlarmesContent(
         }
         if (problem != null) item {
             AlarmesNotice(problem, if (state.phase == AlarmesPhase.NO_SESSION) null else onRefresh)
-        }
-        if (state.isStale) item {
-            Text("Dados desatualizados — última consulta: ${state.updatedAt?.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")).orEmpty()}",
-                fontSize = 11.sp, color = ToneYellowText)
-        } else if (state.hasSnapshot) item {
-            Text("Atualizado em ${state.updatedAt?.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")).orEmpty()}", fontSize = 11.sp, color = TextSecondary)
         }
         if (state.hasSnapshot && visible.isEmpty()) item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

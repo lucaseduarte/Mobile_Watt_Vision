@@ -65,7 +65,11 @@ internal enum class CoberturaRelatorio(val titulo: String) {
 }
 
 internal data class PontoRelatorio(val instante: Instant, val valor: Double, val medidor: String)
-internal data class SerieRelatorio(val pontos: List<PontoRelatorio>, val quantidade: Int)
+internal data class SerieRelatorio(
+    val pontos: List<PontoRelatorio>,
+    val quantidade: Int,
+    val pontosRecentes: List<PontoRelatorio>
+)
 internal data class DiaRelatorio(val dia: LocalDate, val leituras: Int, val valores: Map<GrandezaRelatorio, Double>, val custo: BigDecimal?)
 internal data class Relatorio(
     val leituras: Int,

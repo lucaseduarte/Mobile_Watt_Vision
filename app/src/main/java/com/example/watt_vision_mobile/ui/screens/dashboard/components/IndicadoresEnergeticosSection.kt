@@ -14,6 +14,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.example.watt_vision_mobile.ui.theme.corTema
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,12 +24,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val fundo = Color(0xFF0B111E)
-private val borda = Color(0xFF1E293B)
-private val texto = Color(0xFFF1F5F9)
-private val rotulo = Color(0xFF94A3B8)
-private val referencia = Color(0xFF64748B)
-private val verde = Color(0xFF10B981)
+private val fundo
+    @Composable get() = corTema(0xFF0B111E, 0xFFFFFFFF)
+private val borda
+    @Composable get() = corTema(0xFF1E293B, 0xFFCBD8E7)
+private val texto
+    @Composable get() = corTema(0xFFF1F5F9, 0xFF111827)
+private val rotulo
+    @Composable get() = corTema(0xFF94A3B8, 0xFF475569)
+private val referencia
+    @Composable get() = corTema(0xFF64748B, 0xFF475569)
+private val verde
+    @Composable get() = corTema(0xFF10B981, 0xFF166534)
 
 private data class IndicadorEnergetico(
     val titulo: String,
@@ -38,12 +45,13 @@ private data class IndicadorEnergetico(
     val detalhe: String? = null
 )
 
-private val indicadores = listOf(
-    IndicadorEnergetico("Consumo Total", Icons.Outlined.Bolt, Color(0xFF3B82F6)),
+private val indicadores
+    @Composable get() = listOf(
+    IndicadorEnergetico("Consumo Total", Icons.Outlined.Bolt, corTema(0xFF3B82F6, 0xFF1D4ED8)),
     IndicadorEnergetico("Custo Estimado", Icons.Outlined.AttachMoney, verde),
     IndicadorEnergetico("Consumo Médio", Icons.Outlined.MonitorHeart, verde),
-    IndicadorEnergetico("Pico de Consumo", Icons.AutoMirrored.Outlined.TrendingUp, Color(0xFFF59E0B)),
-    IndicadorEnergetico("Maior Consumo", Icons.Outlined.Schedule, Color(0xFF06B6D4)),
+    IndicadorEnergetico("Pico de Consumo", Icons.AutoMirrored.Outlined.TrendingUp, corTema(0xFFF59E0B, 0xFF854D0E)),
+    IndicadorEnergetico("Maior Consumo", Icons.Outlined.Schedule, corTema(0xFF06B6D4, 0xFF155E75)),
     IndicadorEnergetico("Variação", Icons.Outlined.Percent, verde)
 )
 
@@ -52,7 +60,7 @@ fun IndicadoresEnergeticosSection(periodText: String, modifier: Modifier = Modif
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF111827),
+        color = corTema(0xFF111827, 0xFFF8FBFF),
         border = BorderStroke(1.dp, borda)
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

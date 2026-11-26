@@ -9,7 +9,19 @@ import com.example.watt_vision_mobile.model.MedicaoDto
 import com.example.watt_vision_mobile.ui.screens.medicoes.FonteSerieSimulada
 import com.example.watt_vision_mobile.ui.screens.medicoes.carregarFonteBackend
 import com.example.watt_vision_mobile.ui.screens.medicoes.ZONA_SERIE_REAL
+import com.example.watt_vision_mobile.data.api.AlarmesApiService
+import com.example.watt_vision_mobile.data.api.ApiClient
+import com.example.watt_vision_mobile.data.api.AuthApiService
+import com.example.watt_vision_mobile.data.repository.AlarmesRepository
+import com.example.watt_vision_mobile.data.repository.AlarmesResult
+import com.example.watt_vision_mobile.data.repository.AuthRepository
+import com.example.watt_vision_mobile.model.alarmes.AlarmeSeveridade
+import com.example.watt_vision_mobile.model.alarmes.AlarmeStatus
+import com.example.watt_vision_mobile.data.api.WattVisionApiService
 import com.example.watt_vision_mobile.data.api.integracaoLocal
+import com.example.watt_vision_mobile.model.ApiResponse
+import retrofit2.Response
+import kotlinx.coroutines.async
 import retrofit2.HttpException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -41,6 +53,15 @@ class DashboardViewModel internal constructor(
     val demonstracaoDisponivel = fonte != null
 
     private var carga: Job? = null
+    private val api by lazy { ApiClient.createService<WattVisionApiService>(getApplication()) }
+    private val alarmesRepository by lazy {
+        val app = getApplication<Application>()
+        val sessao = AuthRepository.getInstance(app)
+        AlarmesRepository(
+            ApiClient.createService<AlarmesApiService>(app),
+            ApiClient.createService<AuthApiService>(app)
+        ) { sessao.currentCredential()?.token }
+    }
 
     init { if (fonte == null && integracaoLocal) loadDashboardData() }
 
@@ -51,8 +72,8 @@ class DashboardViewModel internal constructor(
         _uiState.update {
             it.copy(
                 simulated = ativa,
+                atualizadoEm = null,
                 isLoading = false,
-                lastUpdatedText = if (ativa) "Dados simulados" else "Consultas de negócio suspensas",
                 chart = ChartState(ChartStatus.NO_SESSION),
                 chartCatalog = if (ativa) fonte.catalogo else null,
                 chartPoints = emptyList(),
@@ -79,29 +100,47 @@ class DashboardViewModel internal constructor(
         val filtros = estado.filters
         if (!preservarLeituras) _uiState.update { it.copy(
             isLoading = true,
-            lastUpdatedText = "Carregando medições",
             chart = ChartState(ChartStatus.LOADING),
             chartPoints = emptyList(),
-            summaryCards = emptyList()
+            summaryCards = if (fonte == null) cardsDashboard(null, null) else emptyList(),
+            indicadores = emptyList()
         ) }
         carga = viewModelScope.launch {
             val momento = agora()
             val periodo = ChartLogic.period(filtros.period, momento.toLocalDateTime())
+            val dispositivos = if (fonte == null) async {
+                consultarOpcional { api.getDispositivos() }?.map { it.status }
+            } else null
+            val alarmes = if (fonte == null) async { carregarAlarmes(momento) } else null
             try {
                 val fonte = fonte ?: carregarFonteBackend(getApplication())
                 _uiState.update { it.copy(chartCatalog = fonte.catalogo) }
                 val (pzem, status) = fonte.catalogo.resolve(filtros)
                 if (periodo == null || pzem == null) {
-                    concluir(ChartState(if (periodo == null) ChartStatus.UNSUPPORTED_PERIOD else status ?: ChartStatus.EMPTY))
+                    concluir(
+                        ChartState(
+                            if (periodo == null) ChartStatus.UNSUPPORTED_PERIOD else status ?: ChartStatus.EMPTY,
+                            updatedAt = momento.toLocalDateTime()
+                        ),
+                        cards = if (dispositivos == null) emptyList() else cardsDashboard(null, dispositivos.await()),
+                        alarmes = alarmes?.await()
+                    )
                     return@launch
                 }
-                val linhas = fonte.consultar(pzem, periodo.hours)
+                val anterior = periodoAnterior(periodo, filtros.period, momento.toLocalDateTime())
+                val janelaMovel = filtros.period == "6 horas"
+                val consumo = if (dispositivos != null) async {
+                    val inicio = periodo.start.toLocalDate().toString()
+                    val fim = if (janelaMovel) periodo.end.toLocalDate().toString() else inicio
+                    consultarOpcional { api.getConsumo(pzem, inicio, fim) }
+                } else null
+                val linhas = fonte.consultar(pzem, if (dispositivos == null) periodo.hours else anterior.hours)
                 ensureActive()
                 check(linhas.all { it.id_pzem == pzem })
                 val escopo = fonte.catalogo.scopedPointIds(filtros)
                 val pontos = ChartLogic.map(linhas, filtros.metric, periodo, momento.zone, escopo)
-                val ultima = linhas.mapNotNull { linha ->
-                    if (escopo != null && linha.id_ponto_medicao !in escopo) return@mapNotNull null
+                val linhasDoEscopo = linhas.filter { escopo == null || it.id_ponto_medicao in escopo }
+                val ultima = linhasDoEscopo.mapNotNull { linha ->
                     val tempo = ChartLogic.timestamp(linha.data_hora, momento.zone)
                         ?.takeIf(periodo::contains) ?: return@mapNotNull null
                     tempo to linha
@@ -114,7 +153,13 @@ class DashboardViewModel internal constructor(
                         updatedAt = momento.toLocalDateTime()
                     ),
                     pontos,
-                    cards(ultima)
+                    if (dispositivos == null) cardsSimulados(ultima) else cardsDashboard(ultima, dispositivos.await()),
+                    if (dispositivos == null) emptyList() else montarIndicadores(
+                        linhasDoEscopo.takeIf { linhas.size < LIMITE_REGISTROS_SERIE_TEMPORAL }.orEmpty(),
+                        periodo, anterior, filtros.metric, fonte.catalogo, momento.zone, consumo?.await(),
+                        calcularConsumoNaJanela = janelaMovel
+                    ),
+                    alarmes?.await()
                 )
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -122,31 +167,67 @@ class DashboardViewModel internal constructor(
                 ensureActive()
                 val proibido = erro is HttpException && erro.code() in listOf(401, 403)
                 if (preservarLeituras && !proibido && _uiState.value.chart.status == ChartStatus.READY) {
-                    _uiState.update { it.copy(lastUpdatedText = "Falha na atualização. Exibindo a última consulta.") }
+                    _uiState.update { it.copy(chart = it.chart.copy(stale = true)) }
                 } else {
-                    concluir(ChartState(if (proibido) ChartStatus.FORBIDDEN else ChartStatus.ERROR))
+                    concluir(
+                        ChartState(if (proibido) ChartStatus.FORBIDDEN else ChartStatus.ERROR),
+                        cards = if (dispositivos == null) emptyList() else cardsDashboard(
+                            null, if (proibido) null else dispositivos.await()
+                        ),
+                        alarmes = if (proibido) null else alarmes?.await()
+                    )
                 }
             }
         }
         return carga
     }
 
-    private fun concluir(chart: ChartState, pontos: List<MedicaoPoint> = emptyList(), cards: List<StatCardData> = emptyList()) {
+    private fun concluir(
+        chart: ChartState,
+        pontos: List<MedicaoPoint> = emptyList(),
+        cards: List<StatCardData> = emptyList(),
+        indicadores: List<IndicadorDashboard> = emptyList(),
+        alarmes: List<AlarmData>? = null
+    ) {
         _uiState.update { it.copy(
             isLoading = false,
-            lastUpdatedText = when (chart.status) {
-                ChartStatus.ERROR -> "Falha na consulta"
-                ChartStatus.EMPTY -> "Sem leituras no período"
-                ChartStatus.READY -> if (it.simulated) "Dados simulados" else "Dados do Backend"
-                else -> "Medições"
-            },
             chart = chart,
+            atualizadoEm = if (chart.status == ChartStatus.FORBIDDEN) null else chart.updatedAt ?: it.atualizadoEm,
             chartPoints = pontos,
-            summaryCards = cards
+            summaryCards = cards,
+            indicadores = indicadores,
+            alarms = alarmes
         ) }
     }
 
-    private fun cards(ultima: MedicaoDto?): List<StatCardData> {
+    private suspend fun carregarAlarmes(momento: ZonedDateTime): List<AlarmData>? {
+        val resultado = alarmesRepository.load() as? AlarmesResult.Success ?: return null
+        return resultado.records.filter { it.status == AlarmeStatus.ATIVO }
+            .sortedByDescending { ChartLogic.timestamp(it.dataHora, momento.zone) }
+            .map { alarme ->
+                AlarmData(
+                    alarme.titulo,
+                    alarme.nomeEquipamento ?: alarme.categoriaLabel,
+                    ChartLogic.timestamp(alarme.dataHora, momento.zone)?.let(::horarioDashboard) ?: "—",
+                    when (alarme.severidade) {
+                        AlarmeSeveridade.CRITICO -> AlarmType.CRITICAL
+                        AlarmeSeveridade.ATENCAO -> AlarmType.WARNING
+                        else -> AlarmType.INFO
+                    }
+                )
+            }
+    }
+
+    private suspend fun <T> consultarOpcional(chamada: suspend () -> Response<ApiResponse<T>>): T? =
+        try {
+            chamada().takeIf { it.isSuccessful }?.body()?.takeIf { it.sucesso }?.dados
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        }
+
+    private fun cardsSimulados(ultima: MedicaoDto?): List<StatCardData> {
         fun formatar(valor: Double?, formato: String) =
             valor?.let { String.format(Locale.getDefault(), formato, it) } ?: "—"
 

@@ -53,7 +53,8 @@ fun DashboardScreen(
             DashboardHeaderAndFilters(
                 filters = uiState.filters,
                 catalog = uiState.chartCatalog,
-                lastUpdatedText = uiState.lastUpdatedText,
+                atualizadoEm = uiState.atualizadoEm,
+                carregando = uiState.isLoading,
                 onFilterChanged = { newFilters -> viewModel.applyFilters(newFilters) },
                 onRefreshClick = { viewModel.loadDashboardData() },
                 onRemoveFilter = { filterKey -> viewModel.removeSpecificFilter(filterKey) },
@@ -83,6 +84,12 @@ fun DashboardScreen(
                     onSeeAllClick = { onNavigate("Alarmes") }
                 )
 
+                if (integracaoLocal && !viewModel.demonstracaoDisponivel) {
+                    IndicadoresDashboardSection(
+                        uiState.filters.metric.label, uiState.filters.period,
+                        uiState.indicadores.ifEmpty { indicadoresDashboardVazios }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
             }

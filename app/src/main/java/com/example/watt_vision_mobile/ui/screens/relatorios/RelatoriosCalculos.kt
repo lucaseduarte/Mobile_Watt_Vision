@@ -97,11 +97,16 @@ internal fun montarRelatorio(
         leituras[(indice * (leituras.lastIndex / 119.0)).roundToInt()]
     }
     val series = GrandezaRelatorio.entries.associateWith { grandeza ->
-        val pontos = amostra.mapNotNull { leitura ->
-            leitura.valores[grandeza]?.takeIf { it.isFinite() && (grandeza != energia || it >= 0) }
-                ?.let { PontoRelatorio(leitura.instante, it, leitura.medidor) }
-        }
-        SerieRelatorio(pontos, leituras.count { it.valores[grandeza]?.let { v -> v.isFinite() && (grandeza != energia || v >= 0) } == true })
+        fun ponto(leitura: LeituraRelatorio): PontoRelatorio? =
+            leitura.valores[grandeza]?.let { PontoRelatorio(leitura.instante, it, leitura.medidor) }
+
+        val recentes = leituras.asReversed().asSequence()
+            .mapNotNull(::ponto).take(24).toList().asReversed()
+        SerieRelatorio(
+            pontos = amostra.mapNotNull(::ponto),
+            quantidade = leituras.count { grandeza in it.valores },
+            pontosRecentes = recorteRecente(recentes)
+        )
     }
     val consumo = consumoPorDia.values.takeIf { it.isNotEmpty() }?.fold(BigDecimal.ZERO, BigDecimal::add)?.toDouble()
     return Relatorio(
@@ -110,6 +115,16 @@ internal fun montarRelatorio(
         tarifa?.let { taxa -> consumo?.let { custoRelatorio(it, taxa) } }, agora.zone, leituras,
         cobertura, fonte.limiteAtingido, inconsistencias
     )
+}
+
+private fun recorteRecente(pontos: List<PontoRelatorio>): List<PontoRelatorio> {
+    val horarios = pontos.map { it.instante }.distinct()
+    if (horarios.size < 3) return pontos
+    val intervalos = horarios.zipWithNext { a, b -> Duration.between(a, b).seconds }
+    val intervaloTipico = intervalos.sorted()[(intervalos.size - 1) / 2]
+    val limite = maxOf(60L, intervaloTipico * 3)
+    val lacuna = intervalos.indexOfLast { it > limite }
+    return if (lacuna < 0) pontos else pontos.dropWhile { it.instante < horarios[lacuna + 1] }
 }
 
 private fun coincideComGrade(registros: List<LeituraRelatorio>, janela: JanelaMedicoes, cadencia: Long): Boolean {

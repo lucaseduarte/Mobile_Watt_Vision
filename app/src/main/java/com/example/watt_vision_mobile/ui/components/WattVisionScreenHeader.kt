@@ -21,9 +21,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.example.watt_vision_mobile.ui.theme.corTema
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.heading
@@ -42,13 +42,11 @@ import com.example.watt_vision_mobile.ui.theme.WattVisionTheme
 private val HeaderMargin = 16.dp
 private val HeaderVerticalPadding = 12.dp
 private val HeaderTitleStyle = TextStyle(
-    color = Color(0xFFF1F5F9),
     fontSize = 22.sp,
     lineHeight = 28.sp,
     fontWeight = FontWeight.Bold
 )
 private val HeaderSubtitleStyle = TextStyle(
-    color = Color(0xFF94A3B8),
     fontSize = 13.sp,
     lineHeight = 18.sp,
     fontWeight = FontWeight.Normal
@@ -79,8 +77,8 @@ internal fun WattVisionScreenHeader(
             ) {
                 leadingAction?.invoke()
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(title, Modifier.semantics { heading() }, style = HeaderTitleStyle)
-                    if (subtitle != null) Text(subtitle, style = HeaderSubtitleStyle)
+                    Text(title, Modifier.semantics { heading() }, style = HeaderTitleStyle, color = corTema(0xFFF1F5F9, 0xFF111827))
+                    if (subtitle != null) Text(subtitle, style = HeaderSubtitleStyle, color = corTema(0xFF94A3B8, 0xFF475569))
                 }
                 if (actions != null && actionsFitInline) Row(content = actions)
             }

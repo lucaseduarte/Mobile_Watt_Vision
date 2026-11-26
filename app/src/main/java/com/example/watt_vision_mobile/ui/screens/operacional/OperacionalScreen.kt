@@ -23,6 +23,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.watt_vision_mobile.ui.components.AtualizacaoPeriodica
 import com.example.watt_vision_mobile.ui.components.WattVisionHeaderShortcut
 import com.example.watt_vision_mobile.ui.components.WattVisionScreenHeader
 import com.example.watt_vision_mobile.ui.screens.operacional.components.*
@@ -43,6 +44,8 @@ fun OperacionalScreen(
     val errorMessage = uiState.errorMessage
     val pagerState = rememberPagerState(initialPage = uiState.activeTab) { 3 }
     val coroutineScope = rememberCoroutineScope()
+
+    AtualizacaoPeriodica(habilitada = true, atualizar = viewModel::atualizarEmPrimeiroPlano)
 
     // Sincroniza a aba ativa do ViewModel com o Pager
     LaunchedEffect(pagerState.currentPage) {

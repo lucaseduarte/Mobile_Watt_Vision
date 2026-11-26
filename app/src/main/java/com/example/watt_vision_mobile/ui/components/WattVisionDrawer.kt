@@ -1,6 +1,7 @@
 package com.example.watt_vision_mobile.ui.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -64,7 +65,8 @@ fun WattVisionDrawerContent(
                     Image(
                         painter = painterResource(id = R.drawable.logo),
                         contentDescription = "Logo Watt Vision",
-                        modifier = Modifier.size(120.dp),
+                        modifier = Modifier.size(120.dp)
+                            .background(corTema(0x00000000, 0xFF0D151F), RoundedCornerShape(16.dp)),
                         contentScale = ContentScale.Fit
                     )
                 }
@@ -83,14 +85,14 @@ fun WattVisionDrawerContent(
                                 text = item.title,
                                 fontSize = 14.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) TextWhite else TextMuted
+                                color = if (isSelected) TextOnAccent else TextMuted
                             )
                         },
                         icon = {
                             Icon(
                                 imageVector = item.icon,
                                 contentDescription = item.title,
-                                tint = if (isSelected) TextWhite else TextMuted,
+                                tint = if (isSelected) TextOnAccent else TextMuted,
                                 modifier = Modifier.size(20.dp)
                             )
                         },
@@ -100,9 +102,9 @@ fun WattVisionDrawerContent(
                         colors = NavigationDrawerItemDefaults.colors(
                             selectedContainerColor = PrimaryBlue,
                             unselectedContainerColor = InputBackground.copy(alpha = 0.5f),
-                            selectedIconColor = TextWhite,
+                            selectedIconColor = TextOnAccent,
                             unselectedIconColor = TextMuted,
-                            selectedTextColor = TextWhite,
+                            selectedTextColor = TextOnAccent,
                             unselectedTextColor = TextMuted
                         ),
                         shape = RoundedCornerShape(12.dp)

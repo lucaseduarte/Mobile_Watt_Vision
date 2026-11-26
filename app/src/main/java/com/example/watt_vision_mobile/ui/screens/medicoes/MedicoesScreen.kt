@@ -13,9 +13,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.example.watt_vision_mobile.ui.theme.corTema
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.watt_vision_mobile.ui.components.WattVisionHeaderShortcut
+import com.example.watt_vision_mobile.ui.components.ControleAtualizacao
 import com.example.watt_vision_mobile.ui.components.WattVisionScreenHeader
 import com.example.watt_vision_mobile.ui.components.filtros.BotaoFiltros
 import com.example.watt_vision_mobile.ui.components.filtros.PainelFiltros
@@ -127,6 +128,7 @@ private data class FiltrosMedicao(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun MedicoesScreen(
     onNavigate: (String) -> Unit,
@@ -134,6 +136,7 @@ internal fun MedicoesScreen(
 ) {
     var filtros by rememberSaveable(stateSaver = FiltrosMedicao.Saver) { mutableStateOf(FiltrosMedicao()) }
     var filtrosAbertos by rememberSaveable { mutableStateOf(false) }
+    var pontosAbertos by rememberSaveable { mutableStateOf(false) }
     var revisao by remember { mutableIntStateOf(0) }
     val contexto = androidx.compose.ui.platform.LocalContext.current.applicationContext
     val fonte by androidx.compose.runtime.produceState<Result<FonteSerieSimulada>?>(null, contexto, revisao) {
@@ -156,6 +159,10 @@ internal fun MedicoesScreen(
         !com.example.watt_vision_mobile.data.api.integracaoLocal -> ConsultaMedicoes(aviso = "Consultas de negócio suspensas.")
         fonte == null -> ConsultaMedicoes(carregando = true)
         else -> ConsultaMedicoes(aviso = "Falha ao carregar o catálogo de medições.", tentarNovamente = atualizar)
+    }
+    var ultimaAtualizacao by remember { mutableStateOf<java.time.LocalTime?>(null) }
+    LaunchedEffect(consulta.atualizadoEm) {
+        consulta.atualizadoEm?.let { ultimaAtualizacao = it }
     }
     val periodoVisivel = filtros.periodo
     val ultima = consulta.registros.firstOrNull()?.let { valorExibidoMedicao(grandeza.metrica, it.dados) }
@@ -181,12 +188,18 @@ internal fun MedicoesScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             val chips = filtros.chipsAtivos()
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                IconButton(onClick = atualizar, enabled = !consulta.carregando) {
-                    Icon(Icons.Filled.Refresh, contentDescription = "Atualizar medições")
-                }
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BotaoPontosMedicao(Modifier.weight(1f)) { pontosAbertos = true }
                 BotaoFiltros(chips.size) { filtrosAbertos = true }
             }
+            ControleAtualizacao(
+                consulta.atualizadoEm ?: ultimaAtualizacao, atualizar,
+                habilitado = !consulta.carregando, descricao = "Atualizar medições"
+            )
             if (chips.isNotEmpty()) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(chips, key = { it.first }) { (rotulo, filtrosAtualizados) ->
@@ -233,6 +246,10 @@ internal fun MedicoesScreen(
                 TabelaDadosBrutos(consulta, grandeza.metrica)
             }
         }
+    }
+
+    if (pontosAbertos) {
+        PontosMedicaoSheet(dados?.catalogo, fonte?.isFailure == true, atualizar) { pontosAbertos = false }
     }
 
     if (filtrosAbertos) {
@@ -430,7 +447,7 @@ private fun CardMedicao(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
         fundo = CardBackground,
-        borda = Color(0xFF263448)
+        borda = corTema(0xFF263448, 0xFFCBD8E7)
     ) {
         Column(Modifier.padding(16.dp)) {
             val formatoIcone = RoundedCornerShape(12.dp)
@@ -440,19 +457,19 @@ private fun CardMedicao(
                     .border(1.dp, Color.White.copy(alpha = 0.1f), formatoIcone),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icone.vetor, contentDescription = null, modifier = Modifier.size(17.dp), tint = Color(0xFF8DA7C7))
+                Icon(icone.vetor, contentDescription = null, modifier = Modifier.size(17.dp), tint = corTema(0xFF8DA7C7, 0xFFFFFFFF))
             }
             Row(
                 Modifier.padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(valor, Modifier.alignByBaseline(), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFFC0C5C8))
+                Text(valor, Modifier.alignByBaseline(), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = corTema(0xFFC0C5C8, 0xFF111827))
                 if (valor != "—" && unidade.isNotEmpty()) {
-                    Text(unidade, Modifier.alignByBaseline(), fontSize = 11.sp, color = Color(0xFFAFB5BA))
+                    Text(unidade, Modifier.alignByBaseline(), fontSize = 11.sp, color = corTema(0xFFAFB5BA, 0xFF475569))
                 }
             }
-            Text(titulo, fontSize = 12.sp, color = Color(0xFF9CAFC4))
-            Text(descricao, Modifier.padding(top = 4.dp), fontSize = 11.sp, color = Color(0xFF8899AE))
+            Text(titulo, fontSize = 12.sp, color = corTema(0xFF9CAFC4, 0xFF334155))
+            Text(descricao, Modifier.padding(top = 4.dp), fontSize = 11.sp, color = corTema(0xFF8899AE, 0xFF475569))
         }
     }
 }

@@ -30,8 +30,13 @@ data class ChartEquipmentDto(
     val status: String? = null,
     val potencia_nominal: Double? = null
 )
-data class ChartPointDto(val id: Int?, val id_local: Int?, val id_setor: Int?, val id_equipamento: Int?)
-data class ChartSensorDto(val id: Int?, val id_ponto_medicao: Int?)
+data class ChartPointDto(
+    val id: Int?, val id_local: Int?, val id_setor: Int?, val id_equipamento: Int?,
+    val nome: String? = null,
+    val status: String? = null,
+    val id_dispositivo_iot: Long? = null
+)
+data class ChartSensorDto(val id: Int?, val id_ponto_medicao: Int?, val modelo: String? = null)
 
 interface ChartCatalogApiService {
     @GET("api/locais") suspend fun locais(): Response<ApiResponse<List<ChartLocalDto>>>

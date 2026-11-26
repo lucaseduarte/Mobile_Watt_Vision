@@ -18,6 +18,7 @@ import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.example.watt_vision_mobile.ui.theme.corTema
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,14 +34,21 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val fundoPerfil = Color(0xFF111827)
-private val fundoCampo = Color(0xFF0B111E)
-private val bordaPerfil = Color(0xFF1E293B)
-private val tituloPerfil = Color(0xFFF1F5F9)
-private val legendaPerfil = Color(0xFF94A3B8)
-private val linkPerfil = Color(0xFF3B82F6)
+private val fundoPerfil
+    @Composable get() = corTema(0xFF111827, 0xFFFFFFFF)
+private val fundoCampo
+    @Composable get() = corTema(0xFF0B111E, 0xFFF1F6FC)
+private val bordaPerfil
+    @Composable get() = corTema(0xFF1E293B, 0xFFCBD8E7)
+private val tituloPerfil
+    @Composable get() = corTema(0xFFF1F5F9, 0xFF111827)
+private val legendaPerfil
+    @Composable get() = corTema(0xFF94A3B8, 0xFF475569)
+private val linkPerfil
+    @Composable get() = corTema(0xFF3B82F6, 0xFF1D4ED8)
 private val botaoPerfil = Color(0xFF2563EB)
-private val verdePerfil = Color(0xFF10B981)
+private val verdePerfil
+    @Composable get() = corTema(0xFF10B981, 0xFF166534)
 
 private enum class CampoSenha { ATUAL, NOVA, CONFIRMACAO }
 private data class ErroSenha(val campo: CampoSenha, val mensagem: String)
@@ -108,7 +116,7 @@ internal fun MeuPerfilSheet(
                 }
             }
             if (demonstracao) {
-                Text("DEBUG · DADOS SIMULADOS", fontSize = 12.sp, color = Color(0xFFFBBF24))
+                Text("DEBUG · DADOS SIMULADOS", fontSize = 12.sp, color = corTema(0xFFFBBF24, 0xFF854D0E))
             }
             DestaquePerfil(usuario)
             DadoPerfil(Icons.Outlined.Person, "Nome", usuario.nome)
@@ -187,8 +195,8 @@ private fun DestaquePerfil(usuario: UsuarioItem) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF0E1A2E),
-        border = BorderStroke(1.dp, Color(0xFF1E3A5F))
+        color = corTema(0xFF0E1A2E, 0xFFE5EEFF),
+        border = BorderStroke(1.dp, corTema(0xFF1E3A5F, 0xFF9EBAE2))
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -224,7 +232,7 @@ private fun DadoPerfil(icone: ImageVector, rotulo: String, valor: String) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icone, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color(0xFF64748B))
+            Icon(icone, contentDescription = null, modifier = Modifier.size(20.dp), tint = corTema(0xFF64748B, 0xFF475569))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(rotulo, color = legendaPerfil, fontSize = 11.sp)
                 Text(valor, color = tituloPerfil, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -237,7 +245,7 @@ private fun DadoPerfil(icone: ImageVector, rotulo: String, valor: String) {
 private fun CampoSenhaPerfil(rotulo: String, senha: String, erro: String?, onChange: (String) -> Unit) {
     var mostrar by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(rotulo, color = Color(0xFFCBD5E1), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        Text(rotulo, color = corTema(0xFFCBD5E1, 0xFF334155), fontSize = 12.sp, fontWeight = FontWeight.Medium)
         OutlinedTextField(
             value = senha,
             onValueChange = onChange,

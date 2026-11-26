@@ -129,7 +129,7 @@ class GraficoMedicoesTest {
             gesto(janela.centerX(), janela.centerY())
             val antes = encontrar("medicoes-tooltip", id = true).getChild(0).text
             gesto(janela.centerX(), janela.centerY())
-            gesto(janela.right - 12, janela.centerY(), janela.left + 12, janela.centerY())
+            gesto(janela.left + 12, janela.centerY(), janela.right - 12, janela.centerY())
             SystemClock.sleep(400)
             assertEquals(eixoAntes.left, limites("medicoes-eixo-y").left)
             gesto(janela.centerX(), janela.centerY())

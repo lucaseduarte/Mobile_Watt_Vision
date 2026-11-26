@@ -1,13 +1,19 @@
 package com.example.watt_vision_mobile.ui.screens.login
 
+import android.Manifest
+import android.os.Build
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.test.core.app.ActivityScenario
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.lifecycle.ViewModelProvider
+import com.example.watt_vision_mobile.BuildConfig
 import com.example.watt_vision_mobile.MainActivity
 import com.example.watt_vision_mobile.data.TokenStore
+import com.example.watt_vision_mobile.data.api.ApiClient
 import com.example.watt_vision_mobile.data.api.AuthApiService
 import com.example.watt_vision_mobile.data.api.AuthInterceptor
+import com.example.watt_vision_mobile.data.api.ConfiguracaoApi
 import com.example.watt_vision_mobile.data.api.WattVisionApiService
 import com.example.watt_vision_mobile.data.repository.AuthFailure
 import com.example.watt_vision_mobile.data.repository.AuthRepository
@@ -27,6 +33,7 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import retrofit2.Invocation
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -34,11 +41,12 @@ import retrofit2.converter.gson.GsonConverterFactory
 class AuthenticatedNavigationTest {
     @get:Rule val compose = createEmptyComposeRule()
 
-    // Reuse the real Activity and repository without a test entry point in the app APK.
-    private val repositoryField = AuthRepository::class.java.getDeclaredField("instance").apply {
-        isAccessible = true
-    }
-    private var previousRepository: Any? = null
+    // Reuse the actual Activity with an isolated transport for its selected endpoint.
+    private val repositories = endpointCache<AuthRepository>(AuthRepository::class.java, "repositorios")
+    private val clients = endpointCache<Retrofit>(ApiClient::class.java, "clientes")
+    private lateinit var endpoint: String
+    private var previousRepository: AuthRepository? = null
+    private var previousClient: Retrofit? = null
     private var activity: ActivityScenario<MainActivity>? = null
     private lateinit var repository: AuthRepository
     private lateinit var client: Retrofit
@@ -49,7 +57,16 @@ class AuthenticatedNavigationTest {
 
     @Before
     fun installControlledTransport() {
-        previousRepository = repositoryField.get(null)
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        if (BuildConfig.DEBUG && Build.VERSION.SDK_INT >= 37) {
+            instrumentation.uiAutomation.grantRuntimePermission(
+                context.packageName,
+                Manifest.permission.ACCESS_LOCAL_NETWORK
+            )
+        }
+        ConfiguracaoApi.restaurar(context)
+        endpoint = ConfiguracaoApi.url
         val http = OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor(
                 { repository.currentCredential() },
@@ -58,7 +75,13 @@ class AuthenticatedNavigationTest {
             .addInterceptor { chain ->
                 val request = chain.request()
                 val path = request.url.encodedPath
-                requests += "${request.method} $path"
+                // The Dashboard validates the authenticated scope with its own /me
+                // request. Only session transitions use an explicit token argument.
+                val sessionValidation = path == "/api/auth/me" &&
+                    request.tag(Invocation::class.java)?.arguments()?.firstOrNull() != null
+                if (path != "/api/auth/me" || sessionValidation) {
+                    requests += "${request.method} $path"
+                }
                 val code = when (path) {
                     "/api/auth/login" -> {
                         check(request.header("Authorization") == null)
@@ -66,7 +89,7 @@ class AuthenticatedNavigationTest {
                     }
                     "/api/auth/me" -> {
                         check(request.header("Authorization") == "Bearer $TOKEN")
-                        answerMe()
+                        if (sessionValidation) answerMe() else 200
                     }
                     else -> throw IOException("Requisição inesperada no transporte controlado.")
                 }
@@ -82,7 +105,8 @@ class AuthenticatedNavigationTest {
         client = Retrofit.Builder().baseUrl("https://example.invalid/").client(http)
             .addConverterFactory(GsonConverterFactory.create()).build()
         repository = AuthRepository(client.create(AuthApiService::class.java), store)
-        repositoryField.set(null, repository)
+        previousRepository = repositories.put(endpoint, repository)
+        previousClient = clients.put(endpoint, client)
     }
 
     @After
@@ -91,9 +115,18 @@ class AuthenticatedNavigationTest {
         try {
             activity?.close()
         } finally {
-            repositoryField.set(null, previousRepository)
+            if (::endpoint.isInitialized) {
+                if (previousRepository == null) repositories.remove(endpoint)
+                else repositories[endpoint] = requireNotNull(previousRepository)
+                if (previousClient == null) clients.remove(endpoint)
+                else clients[endpoint] = requireNotNull(previousClient)
+            }
         }
     }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> endpointCache(owner: Class<*>, field: String): MutableMap<String, T> =
+        owner.getDeclaredField(field).apply { isAccessible = true }.get(null) as MutableMap<String, T>
 
     @Test fun startsOnLoginWithoutCredentialOrRequests() {
         launch()
@@ -230,7 +263,7 @@ class AuthenticatedNavigationTest {
         awaitIdentityRequest()
         lateinit var pendingLogin: Job
         requireNotNull(activity).onActivity { screen ->
-            val model = ViewModelProvider(screen)[LoginViewModel::class.java]
+            val model = ViewModelProvider(screen)[endpoint, LoginViewModel::class.java]
             val operation = LoginViewModel::class.java.getDeclaredField("operation")
             operation.isAccessible = true
             pendingLogin = operation.get(model) as Job

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.example.watt_vision_mobile.ui.theme.corTema
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,15 +31,24 @@ import com.example.watt_vision_mobile.ui.theme.DarkBackground
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-private val BordaTabela = Color(0xFF1B2638)
-private val TituloTabela = Color(0xFFF1F5F9)
-private val CabecalhoTabela = Color(0xFF405571)
-private val ValorTabela = Color(0xFFCBD5E1)
-private val TextoSecundario = Color(0xFF94A3B8)
-private val DivisoriaTabela = Color(0xFF111B29)
-private val CabecalhoAtivo = Brush.verticalGradient(listOf(Color(0xFF172F4D), Color(0xFF101C2E)))
-private val TextoCabecalhoAtivo = Color(0xFF438CF5)
-private val CelulaAtiva = Color(0xFF0D1726)
+private val BordaTabela
+    @Composable get() = corTema(0xFF1B2638, 0xFFCBD8E7)
+private val TituloTabela
+    @Composable get() = corTema(0xFFF1F5F9, 0xFF111827)
+private val CabecalhoTabela
+    @Composable get() = corTema(0xFF405571, 0xFF475569)
+private val ValorTabela
+    @Composable get() = corTema(0xFFCBD5E1, 0xFF334155)
+private val TextoSecundario
+    @Composable get() = corTema(0xFF94A3B8, 0xFF475569)
+private val DivisoriaTabela
+    @Composable get() = corTema(0xFF111B29, 0xFFDBE6F2)
+private val CabecalhoAtivo
+    @Composable get() = Brush.verticalGradient(listOf(corTema(0xFF172F4D, 0xFFDBEAFE), corTema(0xFF101C2E, 0xFFEFF6FF)))
+private val TextoCabecalhoAtivo
+    @Composable get() = corTema(0xFF438CF5, 0xFF1E40AF)
+private val CelulaAtiva
+    @Composable get() = corTema(0xFF0D1726, 0xFFF8FBFF)
 
 private enum class ColunaBruta(val titulo: String, val largura: Dp, val metrica: ChartMetric? = null) {
     DATA("DATA", 106.dp),
@@ -226,8 +236,8 @@ private fun PaginacaoDadosBrutos(pagina: Int, total: Int, onPage: (Int) -> Unit)
                         onClick = { onPage(numero) },
                         modifier = Modifier.size(tamanho).semantics { selected = ativa },
                         shape = RoundedCornerShape(8.dp),
-                        color = if (ativa) Color(0xFF1D3B66) else Color(0xFF0B1422),
-                        border = BorderStroke(1.dp, if (ativa) Color(0xFF3975C5) else Color(0xFF19283D))
+                        color = if (ativa) corTema(0xFF1D3B66, 0xFF2456A6) else corTema(0xFF0B1422, 0xFFF1F6FC),
+                        border = BorderStroke(1.dp, if (ativa) Color(0xFF3975C5) else corTema(0xFF19283D, 0xFFCBD8E7))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(

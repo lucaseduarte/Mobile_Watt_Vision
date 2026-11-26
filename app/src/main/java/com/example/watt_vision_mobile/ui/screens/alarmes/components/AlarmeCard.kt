@@ -33,11 +33,16 @@ import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 
-private val fundoAlarme = Color(0xFF111827)
-private val bordaAlarme = Color(0xFF1E293B)
-private val textoAlarme = Color(0xFFF1F5F9)
-private val detalheAlarme = Color(0xFF94A3B8)
-private val legendaAlarme = Color(0xFF64748B)
+private val fundoAlarme
+    @Composable get() = corTema(0xFF111827, 0xFFFFFFFF)
+private val bordaAlarme
+    @Composable get() = corTema(0xFF1E293B, 0xFFCBD8E7)
+private val textoAlarme
+    @Composable get() = corTema(0xFFF1F5F9, 0xFF111827)
+private val detalheAlarme
+    @Composable get() = corTema(0xFF94A3B8, 0xFF475569)
+private val legendaAlarme
+    @Composable get() = corTema(0xFF64748B, 0xFF475569)
 
 @Composable
 fun AlarmeCard(alarme: Alarme, onClick: () -> Unit) {
@@ -69,7 +74,7 @@ fun AlarmeCard(alarme: Alarme, onClick: () -> Unit) {
                 val origem = alarme.nomeEquipamento ?: alarme.dispositivoIotId?.let { "Dispositivo IoT #$it" }
                     ?: "Origem não informada"
                 Text("$origem · Local não informado", fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                    color = Color(0xFFCBD5E1))
+                    color = corTema(0xFFCBD5E1, 0xFF334155))
                 Text(AlarmeDate.formatarInicio(alarme.dataHora), fontSize = 12.sp, color = legendaAlarme)
             }
         }
@@ -95,14 +100,14 @@ private fun resumoAlarme(alarme: Alarme): String? {
 @Composable
 private fun AlarmesBadges(alarme: Alarme, detalhes: Boolean = false) {
     val (fundoSeveridade, textoSeveridade) = when (alarme.severidade) {
-        AlarmeSeveridade.CRITICO -> Color(0xFF3B1219) to Color(0xFFF87171)
-        AlarmeSeveridade.ATENCAO -> Color(0xFF33250B) to Color(0xFFFBBF24)
+        AlarmeSeveridade.CRITICO -> corTema(0xFF3B1219, 0xFFFEE2E2) to corTema(0xFFF87171, 0xFF991B1B)
+        AlarmeSeveridade.ATENCAO -> corTema(0xFF33250B, 0xFFFEF3C7) to corTema(0xFFFBBF24, 0xFF854D0E)
         AlarmeSeveridade.INFORMATIVO -> ToneCyanBg to ToneCyanText
         AlarmeSeveridade.DESCONHECIDA -> InputBackground to TextSubtle
     }
     val (fundoStatus, textoStatus) = when (alarme.status) {
-        AlarmeStatus.ATIVO -> if (detalhes) bordaAlarme to Color(0xFFCBD5E1) else Color(0xFF1D4ED8) to Color(0xFF93C5FD)
-        AlarmeStatus.RECONHECIDO, AlarmeStatus.RESOLVIDO -> Color(0xFF065F46) to Color(0xFF6EE7B7)
+        AlarmeStatus.ATIVO -> if (detalhes) bordaAlarme to corTema(0xFFCBD5E1, 0xFF334155) else corTema(0xFF1D4ED8, 0xFFE5EEFF) to corTema(0xFF93C5FD, 0xFF1D4E91)
+        AlarmeStatus.RECONHECIDO, AlarmeStatus.RESOLVIDO -> corTema(0xFF065F46, 0xFFDCFCE7) to corTema(0xFF6EE7B7, 0xFF166534)
         AlarmeStatus.DESCONHECIDO -> InputBackground to TextSubtle
     }
     Row(
@@ -118,10 +123,10 @@ private fun AlarmesBadges(alarme: Alarme, detalhes: Boolean = false) {
             AlarmeBadge("● ${alarme.severidadeLabel}", fundoSeveridade, textoSeveridade)
             if (!detalhes) when (alarme.categoria) {
                 AlarmeCategoria.ENERGETICO -> AlarmeBadge(
-                    alarme.categoriaLabel, Color(0xFF1E3A8A), Color(0xFF60A5FA), icone = Icons.Filled.Bolt
+                    alarme.categoriaLabel, corTema(0xFF1E3A8A, 0xFFE5EEFF), corTema(0xFF60A5FA, 0xFF1E40AF), icone = Icons.Filled.Bolt
                 )
                 AlarmeCategoria.COMUNICACAO -> AlarmeBadge(
-                    alarme.categoriaLabel, Color(0xFF064E3B), Color(0xFF34D399), icone = Icons.Filled.Wifi
+                    alarme.categoriaLabel, corTema(0xFF064E3B, 0xFFDCFCE7), corTema(0xFF34D399, 0xFF166534), icone = Icons.Filled.Wifi
                 )
                 AlarmeCategoria.DESCONHECIDA -> AlarmeBadge(alarme.categoriaLabel, InputBackground, TextSubtle)
             }
@@ -200,12 +205,12 @@ fun AlarmeDetailsSheet(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF261217),
-                    border = BorderStroke(1.dp, Color(0xFF5C1D24))
+                    color = corTema(0xFF261217, 0xFFFEF2F2),
+                    border = BorderStroke(1.dp, corTema(0xFF5C1D24, 0xFFFECACA))
                 ) {
                     Text(
                         condicao, Modifier.padding(14.dp), fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium, color = Color(0xFFFCA5A5)
+                        fontWeight = FontWeight.Medium, color = corTema(0xFFFCA5A5, 0xFF991B1B)
                     )
                 }
             }
@@ -243,7 +248,7 @@ fun AlarmeDetailsSheet(
                     enabled = equipamento != null && !carregando && !abrindoEntidade,
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, bordaAlarme),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF60A5FA)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = corTema(0xFF60A5FA, 0xFF1E40AF)),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) {
                     Text("Ver Equipamento")
@@ -270,14 +275,14 @@ private fun OrigemAlarme(alarme: Alarme, entidade: AlarmeEntidade?) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF0B111E),
+        color = corTema(0xFF0B111E, 0xFFF1F6FC),
         border = BorderStroke(1.dp, bordaAlarme)
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(nome, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = textoAlarme)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(Icons.Outlined.LocationOn, contentDescription = null,
-                    modifier = Modifier.size(16.dp), tint = Color(0xFFF87171))
+                    modifier = Modifier.size(16.dp), tint = corTema(0xFFF87171, 0xFF991B1B))
                 Text(local?.takeIf { it.isNotBlank() } ?: "Local não informado",
                     fontSize = 13.sp, color = detalheAlarme)
             }
