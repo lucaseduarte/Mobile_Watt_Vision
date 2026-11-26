@@ -10,9 +10,9 @@ Em uma pasta nova no PC do auditório:
 
 ```powershell
 git clone --branch teste-prototipo https://github.com/lucaseduarte/Mobile_Watt_Vision.git
-git clone https://github.com/alvesthzin-art/Front_WV.git
+git clone --branch teste-prototipo https://github.com/alvesthzin-art/Front_WV.git
 git clone https://github.com/DiegodelPadua/back-end_wattVision.git
-git -C Front_WV switch --detach 165903b
+git -C Front_WV switch --detach 4ba1ad6
 git -C back-end_wattVision switch --detach 7d724ea
 npm.cmd --prefix .\Front_WV ci
 npm.cmd --prefix .\back-end_wattVision ci

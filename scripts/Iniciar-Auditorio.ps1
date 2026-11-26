@@ -15,6 +15,17 @@ if (-not (Test-Path (Join-Path $backend 'node_modules\mysql2')) -or
     throw 'Execute npm.cmd ci nas pastas do Backend e do Web antes de iniciar.'
 }
 
+foreach ($porta in @(3000, 5173)) {
+    $testePorta = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $porta)
+    try {
+        $testePorta.Start()
+    } catch {
+        throw "A porta $porta esta indisponivel. Encerre o servico que a ocupa antes de iniciar."
+    } finally {
+        $testePorta.Stop()
+    }
+}
+
 $usuario = Read-Host 'Conta MySQL local do Backend'
 $senha = Read-Host 'Senha MySQL da conta do Backend' -AsSecureString
 if ([string]::IsNullOrWhiteSpace($usuario) -or $senha.Length -eq 0) {
